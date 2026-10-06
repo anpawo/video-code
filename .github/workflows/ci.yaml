@@ -199,12 +199,10 @@ jobs:
 
   # ── lane E: the same build, on the other platform. ──
   #
-  # NOT A GATE YET, and the `continue-on-error` says so out loud. This file has
-  # never run on a macOS runner: Vulkan there is MoltenVK through Homebrew
-  # rather than a system loader, and until a green run proves the recipe, a red
-  # X on every push would teach everyone to stop reading the X. Remove the flag
-  # on the first success — the value of a gate is that its failure means
-  # something.
+  # A gate since 2026-10-06. It ran under `continue-on-error` until a green run
+  # had proved the recipe — Vulkan here is MoltenVK through Homebrew rather
+  # than a system loader — and the last 19 runs of `main` were all green: the
+  # value of a gate is that its failure means something.
   #
   # What it is worth, honestly: less than it looks. The developer builds on
   # macOS every day, so a break there is found in minutes; the Linux lane is
@@ -215,7 +213,6 @@ jobs:
   macos:
     name: build (macOS)
     runs-on: macos-14
-    continue-on-error: true
     permissions:
       contents: read
     steps:
