@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790640896178,
-  "repoUrl": "https://github.com/anpawo/Video-Code",
+  "lastUpdate": 1791289071655,
+  "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
       {
@@ -672,6 +672,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/Video-Code/commit/092d44075d852728e7908a37b16d75a160a08838"
         },
         "date": 1790640895207,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "112256146+anpawo@users.noreply.github.com",
+            "name": "anpawo",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b39f4eb96152f230d16b80dd6ef4e81edd62c4fd",
+          "message": "Merge pull request #380 from anpawo/fix/345-linux-ci\n\nci: green again — av stays below 19, and a click's release is built after its press",
+          "timestamp": "2026-10-06T14:16:02+02:00",
+          "tree_id": "d50b9308465d97042bbefcb9e6cb64fc40b95993",
+          "url": "https://github.com/anpawo/video-code/commit/b39f4eb96152f230d16b80dd6ef4e81edd62c4fd"
+        },
+        "date": 1791289071031,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
