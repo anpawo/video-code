@@ -361,15 +361,6 @@ jobs:
       # have no binary to start. Without it Qt defaults to xcb, finds no display
       # and never comes up — which the tests can only report as "state did not
       # answer within 30 s", 28 times over.
-      #
-      # One test still fails here and is NOT fixed by an environment variable:
-      # timeline_drag's two `Click:` checks. The click reaches the right point —
-      # elementAtWindow, which is arithmetic and needs no layout, says "circle
-      # line 11" — but the press selects line 7, so the lanes the pointer hits
-      # are not where the arithmetic puts them. QT_QUICK_BACKEND=software was
-      # tried on 2026-09-20 and changed nothing, byte for byte, so the missing
-      # frame is not the cause either. Everything else in that file passes:
-      # the drags, the hovers, the edge lines, the tips.
       - name: Full suite, with every tool present
         env:
           VC_REQUIRE_TOOLS: '1'
