@@ -105,11 +105,15 @@ jobs:
   history:
     name: remember
     needs: [fast]
+    # On every push and pull request, not only on `main`: `--verify` is what
+    # refuses a row typed into history.jsonl, and a pull request is where such
+    # a row arrives. Only the last step writes, and it keeps to `main`.
+    #
     # The repository check is not optional decoration: this job carries
     # `contents: write`, and without it anyone who forks and pushes to their
-    # own main starts it. The rule is that a job which writes only runs where
+    # own main starts it. The rule is that a step which writes only runs where
     # we mean it to write.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'anpawo/Video-Code'
+    if: github.repository == 'anpawo/Video-Code'
     runs-on: ubuntu-latest
     permissions:
       contents: write # gh-pages only; grants nothing the pusher did not have
@@ -143,6 +147,7 @@ jobs:
       # Pinned to a sha, not a tag: this job holds `contents: write`, and a tag
       # is a pointer its owner can move.
       - uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           tool: customSmallerIsBetter
           output-file-path: bench.json
@@ -199,12 +204,10 @@ jobs:
 
   # ── lane E: the same build, on the other platform. ──
   #
-  # NOT A GATE YET, and the `continue-on-error` says so out loud. This file has
-  # never run on a macOS runner: Vulkan there is MoltenVK through Homebrew
-  # rather than a system loader, and until a green run proves the recipe, a red
-  # X on every push would teach everyone to stop reading the X. Remove the flag
-  # on the first success — the value of a gate is that its failure means
-  # something.
+  # A gate since 2026-10-06. It ran under `continue-on-error` until a green run
+  # had proved the recipe — Vulkan here is MoltenVK through Homebrew rather
+  # than a system loader — and the last 19 runs of `main` were all green: the
+  # value of a gate is that its failure means something.
   #
   # What it is worth, honestly: less than it looks. The developer builds on
   # macOS every day, so a break there is found in minutes; the Linux lane is
@@ -215,7 +218,6 @@ jobs:
   macos:
     name: build (macOS)
     runs-on: macos-14
-    continue-on-error: true
     permissions:
       contents: read
     steps:
