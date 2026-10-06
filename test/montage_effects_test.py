@@ -18,16 +18,16 @@ import tempfile
 
 sys.path.insert(0, ".")
 sys.path.insert(0, "test")
-from helpers import check, section, summary
+from helpers import check, needsTool, section, summary
 
 from videocode import *
 from videocode.template.effect.framing import containSize, framePosition, mediaBox
-from videocode.template.effect.ramp import dipAndReturn
+from videocode.template.effect.ramp import HOLD_NONE, dipAndReturn, holdAfter
 from videocode.template.effect.other.camera import punchIn, reframe, snapZoom, travelling, zoomTo
 from videocode.template.effect.other.desaturate import desaturate
 from videocode.template.effect.other.glitchBurst import glitchBurst
 from videocode.template.effect.other.impact import impact
-from videocode.template.effect.other.retime import accelere, decimate, freezeFrame, ralenti, rewind
+from videocode.template.effect.other.retime import decimate, fastForward, freezeFrame, rewind, slowMotion, speedRamp
 from videocode.template.effect.other.scope import scope, unscope
 from videocode.template.effect.other.spotlightOn import spotlightOn, zoneFocus
 from videocode.template.effect.other.vignetteIn import vignetteBeat, vignetteIn
@@ -57,6 +57,15 @@ tl = framePosition(box, 0.0, 0.0, 1.0)
 check("top-left frames to (+2, -1)", abs(tl.x - 2.0) < 1e-9 and abs(tl.y + 1.0) < 1e-9)
 tl2 = framePosition(box, 0.0, 0.0, 2.0)
 check("zoom scales the offset", abs(tl2.x - 4.0) < 1e-9 and abs(tl2.y + 2.0) < 1e-9)
+
+# A shape's `width` is what is DRAWN, already times its scale: a box read from
+# it counted the scale twice, and every move on a shape not at scale 1 — the
+# second of two chained moves — missed its point by that factor.
+scaled = Rectangle(width=4, height=2).position(0.0, 0.0).scale(2)
+sb = mediaBox(scaled)
+check("mediaBox is the geometry, whatever the scale", (sb.x, sb.y) == (4.0, 2.0))
+tls = framePosition(scaled, 0.0, 0.0, 1.0)
+check("a scaled shape counts its scale once", abs(tls.x - 4.0) < 1e-9 and abs(tls.y + 2.0) < 1e-9)
 
 # ---------------------------------------------------------------------------
 section("punchIn — scale only, position untouched")
@@ -161,49 +170,48 @@ d.apply(desaturate(amount=1.0, duration=1.2, fade=0.3))
 grays = [e["args"]["strength"] for _, e in sorted(framesWith(d.meta.index, "Grayscale").items())]
 check("desaturate rises then falls", grays[len(grays) // 2] > grays[0] and grays[len(grays) // 2] > grays[-1])
 
-# Le palier, pas seulement les deux rampes. Un shader fragment ne vaut que pour
-# la frame ou il est pose : tant que le palier n'etait emis qu'une fois, les
-# frames du milieu n'en recevaient aucun et l'effet disparaissait entre son
-# entree et sa sortie — visible a l'image, invisible pour les assertions
-# ci-dessus, qui ne regardaient que le debut, le milieu et la fin de la LISTE.
+# The hold, not only the two ramps. A fragment shader only applies to the
+# frame it is posed on: while the hold was emitted once, the frames in the
+# middle got none and the effect vanished between its entrance and its exit —
+# visible on screen, invisible to the assertions above, which only looked at
+# the start, the middle and the end of the LIST.
 dh = Rectangle(width=1, height=1)
 dh.apply(desaturate(amount=1.0, duration=1.2, fade=0.3))
 held = sorted(framesWith(dh.meta.index, "Grayscale"))
-check("desaturate n'a pas de trou", held == list(range(min(held), max(held) + 1)))
+check("desaturate has no gap", held == list(range(min(held), max(held) + 1)))
 
 sh = Rectangle(width=1, height=1)
 sh.apply(spotlightOn(x=0.5, y=0.5, radius=0.2, duration=1.2, fade=0.3))
 lit = sorted(framesWith(sh.meta.index, "Spotlight"))
-check("spotlightOn n'a pas de trou", lit == list(range(min(lit), max(lit) + 1)))
-check("spotlightOn couvre bien sa duree", len(lit) >= round(1.2 * FRAMERATE) - 1)
+check("spotlightOn has no gap", lit == list(range(min(lit), max(lit) + 1)))
+check("spotlightOn covers its whole duration", len(lit) >= round(1.2 * FRAMERATE) - 1)
 
-# ... et le trou ne vient pas que d'un palier emis une seule fois. Un `fade`
-# qui ne tombe pas sur un nombre entier de frames decalait le palier d'une
-# demi-frame, et `round()` (moitie vers le pair) envoyait les emissions sur
-# 10, 12, 12, 14, 14... : deux shaders sur une frame, AUCUN sur la suivante.
-# Le defaut de spotlightOn, fade=0.35, fait exactement 10,5 frames a 30 fps —
-# les assertions ci-dessus passaient parce qu'elles forcaient fade=0.3.
-# Donc : les valeurs PAR DEFAUT, et un balayage de fades mal tombes.
+# ... and the gap does not only come from a hold emitted once. A `fade` that
+# is not a whole number of frames put the hold half a frame off, and `round()`
+# (half to even) sent the emissions to 10, 12, 12, 14, 14...: two shaders on
+# one frame, NONE on the next. spotlightOn's default, fade=0.35, is exactly
+# 10.5 frames at 30 fps — the assertions above passed because they forced
+# fade=0.3. So: the DEFAULT values, and a sweep of awkward fades.
 sd = Rectangle(width=1, height=1)
 sd.apply(spotlightOn(x=0.5, y=0.5))
 byDefault = sorted(framesWith(sd.meta.index, "Spotlight"))
-check("spotlightOn par defaut n'a pas de trou",
+check("spotlightOn has no gap with its defaults",
       byDefault == list(range(min(byDefault), max(byDefault) + 1)))
 
 for awkward in (0.35, 0.25, 0.17, 0.05, 0.383):
     r = Rectangle(width=1, height=1)
     r.apply(spotlightOn(x=0.5, y=0.5, duration=2.0, fade=awkward))
     posed = sorted(framesWith(r.meta.index, "Spotlight"))
-    check(f"un fade de {awkward}s reste sur la grille des frames",
+    check(f"a {awkward}s fade stays on the frame grid",
           posed == list(range(min(posed), max(posed) + 1)))
 
-# Une frame ne doit pas non plus recevoir DEUX shaders : c'est l'autre moitie
-# du meme decalage, et elle gaspille une passe de rendu.
+# A frame must not get TWO shaders either: that is the other half of the same
+# offset, and it wastes a render pass.
 doubled = [t for _, t in dipAndReturn(peak=1.0, duration=2.0, fade=0.35)]
 poses = [round(t * FRAMERATE) for t in doubled]
-check("dipAndReturn pose un shader par frame, et un seul",
+check("dipAndReturn poses one shader per frame, and only one",
       len(poses) == len(set(poses)) and poses == list(range(poses[0], poses[0] + len(poses))))
-check("dipAndReturn tient exactement sa duree", len(poses) == round(2.0 * FRAMERATE))
+check("dipAndReturn lasts exactly its duration", len(poses) == round(2.0 * FRAMERATE))
 
 g = Rectangle(width=1, height=1)
 g.apply(glitchBurst(amount=6, slices=16, seed=7, blocks=30, duration=0.6))
@@ -234,61 +242,96 @@ us.apply(unscope(ratio=2.39, duration=0.5))
 openBars = [e["args"]["top"] for _, e in sorted(framesWith(us.meta.index, "Crop").items())]
 check("unscope opens back to zero", abs(openBars[-1]) < 1e-6 and abs(openBars[0] - expected) < 1e-6)
 
-# Un "look" doit TENIR apres son mouvement. Un shader pose sur une frame avec
-# la duree par defaut d'une frame cesse de s'appliquer a la suivante : les
-# barres se rouvraient donc a la seconde ou le mouvement finissait. Dans la
-# bobine, les 0,2 s entre la fin de `scope` et le debut de `unscope` laissaient
-# reapparaitre l'image pleine, puis les barres claquaient a nouveau — un
-# clignotement bien visible. Les assertions precedentes ne pouvaient pas le
-# voir : elles ne regardaient que les VALEURS emises, jamais leur duree.
+# A ratio narrower than the frame closes from the SIDES, as `letterbox` does.
+# The bars used to clamp to zero there, so `scope(ratio=1)` did nothing.
+side = (1.0 - SCREEN_HEIGHT / SCREEN_WIDTH) / 2 * 100
+sq = Rectangle(width=1, height=1)
+sq.apply(scope(ratio=1, duration=0.5))
+square = last(framesWith(sq.meta.index, "Crop"))
+check("scope(ratio=1) closes from the left and the right",
+      abs(square["left"] - side) < 1e-6 and abs(square["right"] - side) < 1e-6)
+check("scope(ratio=1) leaves top and bottom alone", square["top"] == 0 and square["bottom"] == 0)
+check("a wide ratio leaves the sides alone", last(framesWith(sc.meta.index, "Crop"))["left"] == 0)
+
+uq = Rectangle(width=1, height=1)
+uq.apply(unscope(ratio=1, duration=0.5))
+openSides = [e["args"]["left"] for _, e in sorted(framesWith(uq.meta.index, "Crop").items())]
+check("unscope(ratio=1) opens the sides back", abs(openSides[0] - side) < 1e-6 and abs(openSides[-1]) < 1e-6)
+
+# A "look" has to HOLD after its move. A shader posed on a frame with the
+# default one-frame duration stops applying on the next one: the bars sprang
+# back open the second the move ended. In the reel, the 0.2 s between the end
+# of `scope` and the start of `unscope` let the full image come back, then the
+# bars slammed shut again — a clearly visible flicker. The assertions before
+# could not see it: they only looked at the VALUES emitted, never at how long
+# they last.
 sh = Rectangle(width=1, height=1)
 sh.apply(scope(ratio=2.39, duration=0.6, hold=1.5))
 posed = {f: e["args"] for f, e in sorted(framesWith(sh.meta.index, "Crop").items())}
 landing = max(posed)
-check("scope tient ses barres apres le mouvement", posed[landing]["duration"] > 1)
-check("scope atterrit sur la frame juste apres l'animation",
+check("scope holds its bars after the move", posed[landing]["duration"] > 1)
+check("scope lands on the frame right after the animation",
       landing == int(0.6 * FRAMERATE) and sorted(posed) == list(range(0, landing + 1)))
-check("scope tient a la bonne valeur", abs(posed[landing]["top"] - expected) < 1e-6)
+check("scope holds at the right value", abs(posed[landing]["top"] - expected) < 1e-6)
 
 uh = Rectangle(width=1, height=1)
 uh.apply(unscope(ratio=2.39, duration=0.6, hold=1.5))
 openPosed = {f: e["args"] for f, e in sorted(framesWith(uh.meta.index, "Crop").items())}
-check("unscope tient le cadre ouvert", openPosed[max(openPosed)]["duration"] > 1
+check("unscope holds the frame open", openPosed[max(openPosed)]["duration"] > 1
       and abs(openPosed[max(openPosed)]["top"]) < 1e-6)
 
 vh = Rectangle(width=1, height=1)
 vh.apply(vignetteIn(intensity=0.5, duration=0.6, hold=1.5))
 vPosed = {f: e["args"] for f, e in sorted(framesWith(vh.meta.index, "Vignette").items())}
-check("vignetteIn tient quand on le lui demande",
+check("vignetteIn holds when asked to",
       vPosed[max(vPosed)]["duration"] > 1 and abs(vPosed[max(vPosed)]["intensity"] - 0.5) < 1e-6)
 
-# Et la tenue coute de la longueur de film : `apply` fait grandir le film pour
-# couvrir la fin de chaque shader. Une tenue "pour toujours" rendrait donc un
-# film de cette longueur — mesure : un hold d'une heure a transforme une bobine
-# de 33,8 s en 217980 images. D'ou le defaut a zero.
+# And the hold costs film length: `apply` grows the film to cover the end of
+# every shader. A hold "forever" would render a film that long — measured: a
+# one-hour hold turned a 33.8 s reel into 217980 frames. Hence the default of
+# zero.
 hf = Rectangle(width=1, height=1)
 before = Context.lastEverAffectedFrame
 hf.apply(scope(ratio=2.39, duration=0.6, hold=4))
-check("la tenue rallonge le film d'exactement ce qu'on a demande",
+check("the hold lengthens the film by exactly what was asked",
       Context.lastEverAffectedFrame == int(0.6 * FRAMERATE) + round(4 * FRAMERATE))
 
 
 nh = Rectangle(width=1, height=1)
 nh.apply(scope(ratio=2.39, duration=0.6))
-check("par defaut, aucune tenue : le film n'est pas rallonge a l'insu de l'auteur",
+check("by default, no hold: the film is not lengthened behind the author's back",
       all(e["args"]["duration"] == 1 for e in framesWith(nh.meta.index, "Crop").values()))
+
+# ---------------------------------------------------------------------------
+section("holdAfter — one shader, on the frame after the move")
+
+kept = list(holdAfter(crop(top=5, bottom=5), 1.0, 0.6, 1.5))
+check("holdAfter poses ONE shader", len(kept) == 1)
+check("holdAfter lands on the frame right after the animation",
+      round(kept[0].start * FRAMERATE) == FRAMERATE + int(0.6 * FRAMERATE))
+check("holdAfter keeps it for the hold asked", kept[0].duration == 1.5)
+# 0.05 s is 1.5 frames: the move emits ONE frame, so the hold belongs on frame
+# 1. Anchored in seconds it would round to frame 2 and leave a frame bare.
+check("holdAfter counts the landing in frames, not seconds",
+      round(next(holdAfter(crop(), 0, 0.05, 1)).start * FRAMERATE) == 1)
+check("no hold, no shader", list(holdAfter(crop(), 0, 0.6, HOLD_NONE)) == [])
 
 # ---------------------------------------------------------------------------
 section("retime — speedRamp builders, in seconds")
 
-check("ralenti slows", ralenti(at=1, duration=2, rate=0.4) == (FRAMERATE, 3 * FRAMERATE, 0.4))
-check("accelere speeds up", accelere(at=0, duration=1, rate=4)[2] == 4.0)
+check("speedRamp turns seconds into playback frames", speedRamp(at=1, duration=2, rate=0.5) == (FRAMERATE, 3 * FRAMERATE, 0.5))
+check("speedRamp rounds to the nearest frame", speedRamp(at=0.51, duration=0.98, rate=2)[:2] == (round(0.51 * FRAMERATE), round(1.49 * FRAMERATE)))
+check("a zero-length window still spans one frame", speedRamp(at=1, duration=0, rate=1)[:2] == (FRAMERATE, FRAMERATE + 1))
+check("slowMotion slows", slowMotion(at=1, duration=2, rate=0.4) == (FRAMERATE, 3 * FRAMERATE, 0.4))
+check("fastForward speeds up", fastForward(at=0, duration=1, rate=4)[2] == 4.0)
 check("freezeFrame holds", freezeFrame(at=2, duration=1)[2] == 0.0)
 check("rewind goes backwards", rewind(at=2, duration=1)[2] < 0)
-check("a zero-length window still spans one frame", ralenti(at=1, duration=0)[1] > ralenti(at=1, duration=0)[0])
+check("the builders are speedRamp with a rate of their own",
+      slowMotion(at=1, duration=2) == speedRamp(at=1, duration=2, rate=0.4)
+      and fastForward(at=1, duration=2) == speedRamp(at=1, duration=2, rate=4))
 
 # A Video accepts them as-is — that is the whole contract.
-ramps = [ralenti(at=0, duration=1), accelere(at=2, duration=1), freezeFrame(at=4, duration=1)]
+ramps = [slowMotion(at=0, duration=1), fastForward(at=2, duration=1), freezeFrame(at=4, duration=1)]
 check("Video accepts the builders' output", all(isinstance(r, tuple) and len(r) == 3 for r in ramps))
 
 # ---------------------------------------------------------------------------
@@ -316,7 +359,7 @@ check("a tall source is limited by height", abs(tall.y - WORLD_HEIGHT) < 1e-6 an
 check("aspect ratio preserved", abs(tall.x / tall.y - 1322 / 1526) < 1e-6)
 
 # ---------------------------------------------------------------------------
-section("reframe — back to the original framing")
+section("reframe — position (0, 0), scale (1, 1)")
 
 rf = Rectangle(width=1, height=1)
 rf.apply(zoomTo(x=0.2, y=0.8, zoom=2.0, duration=0.5))
@@ -328,16 +371,14 @@ check("reframe poses scale (1, 1)", tuple(last(framesWith(rf.meta.index, "Scale"
 # ---------------------------------------------------------------------------
 section("probeVideo — size and average frame rate")
 
-with tempfile.TemporaryDirectory() as tmp:
-    clipPath = f"{tmp}/probe.mp4"
-    made = subprocess.run(
-        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=64x48:r=25:d=1", "-pix_fmt", "yuv420p", clipPath],
-        capture_output=True,
-    )
-    if made.returncode == 0:
+if needsTool("ffmpeg", "probeVideo reads a real clip") and needsTool("ffprobe", "probeVideo reads a real clip"):
+    with tempfile.TemporaryDirectory() as tmp:
+        clipPath = f"{tmp}/probe.mp4"
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=64x48:r=25:d=1", "-pix_fmt", "yuv420p", clipPath],
+            check=True,
+        )
         check("probeVideo reads width, height and fps", probeVideo(clipPath) == (64.0, 48.0, 25.0))
-    else:
-        print("  (ffmpeg unavailable — probeVideo not exercised)")
 
 # ---------------------------------------------------------------------------
 summary()

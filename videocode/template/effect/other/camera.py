@@ -49,7 +49,9 @@ def punchIn(
 
 def reframe() -> Effect:
     """
-    Snap back to the original framing — position `(0, 0)`, scale `(1, 1)`.
+    Snap to the default framing — position `(0, 0)`, scale `(1, 1)`, written
+    as absolute values: an input that was placed or scaled before the moves
+    does not get that placement back.
 
     `zoomTo`, `travelling`, `punchIn` and `snapZoom` (but the last) are
     STATEFUL: they leave the camera where they brought it. A reel chaining
@@ -85,8 +87,11 @@ def zoomTo(
     turning a domain coordinate into that fraction is the caller's job.
 
     Both axes of `position` and `scale` are claimed for the whole window, and
-    the framing PERSISTS afterwards (position/scale are stateful) — follow it
-    with `zoomTo(x=0.5, y=0.5, zoom=1)` to come back, or use `snapZoom`.
+    the framing PERSISTS afterwards (position/scale are stateful). `zoom`
+    multiplies the CURRENT scale, so `zoom=1` keeps the zoom it finds: undo
+    it with the inverse, `zoomTo(x=0.5, y=0.5, zoom=1 / 2.4)` — the scale it
+    had, centred on the frame — or with `reframe()`, or use `snapZoom`,
+    which returns by itself.
 
         clip.apply(zoomTo(x=0.42, y=0.61, zoom=2.4))
     """

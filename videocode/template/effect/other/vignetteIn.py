@@ -32,9 +32,10 @@ def vignetteIn(
     posed on a frame with the default one-frame duration stops applying on
     the next one, so the vignette snaps off the moment it finishes arriving
     unless `hold` says how many seconds it should stay. (The docstring used
-    to claim it PERSISTED; it did not, and nothing tested it.) Reverse it
-    with `vignetteIn(intensity=0)` later, or wrap the whole thing in
-    `vignetteBeat`.
+    to claim it PERSISTED; it did not, and nothing tested it.) There is no
+    ramp back out: this one always starts from 0, so a later
+    `vignetteIn(intensity=0)` cuts the vignette off instead of easing it
+    open. For corners that open again, use `vignetteBeat`.
 
         clip.apply(vignetteIn())
         clip.apply(vignetteIn(intensity=0.8, radius=30, duration=2))

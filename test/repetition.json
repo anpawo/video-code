@@ -1,7 +1,7 @@
 {
-  "repeatedLines": 1668,
-  "repetitions": 117,
-  "deadNames": 19,
+  "repeatedLines": 1677,
+  "repetitions": 118,
+  "deadNames": 16,
   "clones": {
     "f701efd1a8b3f6ef": [42, 2, "auto vertSpv = compileGLSL(loadShaderSource(\"vert.glsl\"), VK_SHADER_STAGE_VERTEX_BIT);"],
     "0b3e38fbdc9e2b06": [38, 3, "VkPipelineShaderStageCreateInfo stages[2]{};"],
@@ -41,6 +41,7 @@
     "24a330f1c164b55c": [9, 2, "def __init__("],
     "2a8e6626ae583b55": [9, 3, "VkImageCreateInfo ici{};"],
     "2e9ea01dd1513769": [9, 2, "input: Input,"],
+    "41684c9b0df57310": [9, 2, "from typing import TYPE_CHECKING, Any, Generator"],
     "4ecf938c5bf65c42": [9, 2, "VkDescriptorPool m_lutPool = VK_NULL_HANDLE;"],
     "6f2627e7bca388d8": [9, 2, "Rectangle {"],
     "7bfcfddb839dbe89": [9, 2, "new_rw = self.rect.width"],

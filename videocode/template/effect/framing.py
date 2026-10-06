@@ -40,17 +40,16 @@ def mediaBox(input: Input) -> v2[number, number]:
     The input's UNSCALED size in world units — what one "fraction of the
     media" is worth before `meta.scale` is applied.
 
-    Three sources, in order of trust: an explicit `width`/`height` (what
-    `Video` and `Image` carry), then the bounding box of the vertices (any
-    `Polygon`), then the world box itself — the sane fallback for a
+    Three sources, in order of trust: the bounding box of the vertices (any
+    `Polygon`, `Video` and `Image` included), then an explicit
+    `width`/`height`, then the world box itself — the sane fallback for a
     full-frame element such as an `AdjustmentLayer`, which has no geometry
     of its own but covers exactly the frame.
-    """
-    width = getattr(input, "width", None)
-    height = getattr(input, "height", None)
-    if width and height:
-        return v2(float(width), float(height))
 
+    The vertices come first because a shape's `width` is what is DRAWN,
+    already times `meta.scale`: read from it, `framePosition` counted the
+    scale twice on any shape not at scale 1.
+    """
     vertices = getattr(input, "vertices", None)
     if vertices:
         xs = [p[0] for p in vertices]
@@ -58,6 +57,11 @@ def mediaBox(input: Input) -> v2[number, number]:
         w, h = max(xs) - min(xs), max(ys) - min(ys)
         if w > 0 and h > 0:
             return v2(float(w), float(h))
+
+    width = getattr(input, "width", None)
+    height = getattr(input, "height", None)
+    if width and height:
+        return v2(float(width), float(height))
 
     return v2(float(WORLD_WIDTH), float(WORLD_HEIGHT))
 

@@ -16,13 +16,13 @@ from __future__ import annotations
 # rest of a scene is written in:
 #
 #     Video("game.mov", speedRamps=[
-#         ralenti(at=41.5, duration=3),
+#         slowMotion(at=41.5, duration=3),
 #         freezeFrame(at=52.0, duration=1.2),
-#         accelere(at=60, duration=40),
+#         fastForward(at=60, duration=40),
 #     ])
 #
 # One honest limitation, inherited from `Video`: sampling is NEAREST-FRAME at
-# every rate. `ralenti(rate=0.25)` shows each source frame four times — it is
+# every rate. `slowMotion(rate=0.25)` shows each source frame four times — it is
 # a slow motion, not an INTERPOLATED one. Optical-flow retiming (what an
 # editor means by "smooth slowmo") does not exist in the engine; the smooth
 # version has to come from footage shot at a high frame rate.
@@ -45,7 +45,7 @@ def speedRamp(*, at: sec, duration: sec, rate: number) -> tuple[frame, frame, fl
     return (startFrame, endFrame, float(rate))
 
 
-def ralenti(*, at: sec, duration: sec, rate: number = 0.4) -> tuple[frame, frame, float]:
+def slowMotion(*, at: sec, duration: sec, rate: number = 0.4) -> tuple[frame, frame, float]:
     """
     Slow motion over a window: `rate=0.4` plays it at 40% speed.
 
@@ -55,7 +55,7 @@ def ralenti(*, at: sec, duration: sec, rate: number = 0.4) -> tuple[frame, frame
     return speedRamp(at=at, duration=duration, rate=rate)
 
 
-def accelere(*, at: sec, duration: sec, rate: number = 4.0) -> tuple[frame, frame, float]:
+def fastForward(*, at: sec, duration: sec, rate: number = 4.0) -> tuple[frame, frame, float]:
     """
     Speed ramp: compress a dull stretch. `rate=4` pushes four seconds of
     source through one second of playback.

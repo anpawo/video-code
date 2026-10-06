@@ -34,8 +34,8 @@ def desaturate(
 
     def _apply(_input: Input) -> Generator[IShader, Any, None]:
         for v, t in dipAndReturn(peak=amount, start=start, duration=duration, fade=fade):
-            # En dessous de 1 %, la grille de gris est indistinguable de
-            # l'image : on evite de poser un shader pour rien.
+            # Below 1 % the grey grade cannot be told from the image: no
+            # point posing a shader for nothing.
             if v > 0.01:
                 yield _grayscale(v).at(start=t)
 

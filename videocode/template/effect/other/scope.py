@@ -14,6 +14,24 @@ if TYPE_CHECKING:
     from videocode.input.input import Input
 
 
+def _bars(ratio: number, start: sec, duration: sec, hold: sec, easing: easing, closing: bool) -> Effect:
+    """`scope` when `closing`, `unscope` when not: one move, read from either end."""
+    # Measured against the frame, as `letterbox` does: what fraction of the
+    # height survives at `ratio`:1. Above 1 the ratio is narrower than the
+    # frame, and it is the width that gives way — bars left and right.
+    keep = (SCREEN_WIDTH / ratio) / SCREEN_HEIGHT if ratio > 0 else 1.0
+    sides = ("top", "bottom") if keep <= 1 else ("left", "right")
+    bar = (1.0 - (keep if keep <= 1 else 1 / keep)) / 2 * 100
+    src, dst = (0.0, bar) if closing else (bar, 0.0)
+
+    def _apply(_input: Input) -> Generator[IShader, Any, None]:
+        for b, i in easing.rangeIdx(src, dst, duration):
+            yield _crop(**dict.fromkeys(sides, b)).at(start=start + i * SINGLE_FRAME)
+        yield from _hold(_crop(**dict.fromkeys(sides, dst)), start, duration, hold)
+
+    return _apply
+
+
 def scope(
     *,
     ratio: number = 2.39,
@@ -25,11 +43,15 @@ def scope(
     """
     Slide cinemascope bars in until the visible image is `ratio`:1 — the
     "this bit is the film" marker. `2.39` is anamorphic scope, `1.85` is
-    flat widescreen, `1` is a square crop.
+    flat widescreen, `1` is a square crop. The bars come from the top and
+    bottom when `ratio` is wider than the frame, from the left and right when
+    it is narrower — what `letterbox` does, animated.
 
-    The bars are an animated `crop` on the input's own box, so they close in
-    on the MEDIA, not on the frame: a portrait capture floating in a wide
-    frame gets bars sized to the capture.
+    The bars are an animated `crop`, so they close in on the MEDIA, not on
+    the frame — but their size is the percentage a frame-filling input
+    needs. On an input of another shape (a portrait capture floating in a
+    wide frame) the same percentage of ITS box is cut, and what stays
+    visible is not `ratio`:1.
 
     The bars do NOT stay by themselves. A shader posed on a frame with the
     default one-frame duration stops applying on the next one, so the bars
@@ -40,21 +62,11 @@ def scope(
     flicker. `hold` costs film length when it runs past everything else, so
     it is asked for rather than assumed — see `holdAfter`.
 
-        clip.apply(scope())                        # le mouvement seul
-        clip.apply(scope(duration=0.6, hold=1.4))  # ... et il tient 1,4 s
+        clip.apply(scope())                        # the move alone
+        clip.apply(scope(duration=0.6, hold=1.4))  # ... and it stays 1.4 s
         clip.apply(scope(ratio=1.85, duration=1))
     """
-    # The input's box already fills the frame in the common case, so measure
-    # against the frame: what fraction of the height survives at `ratio`:1.
-    keep = (SCREEN_WIDTH / ratio) / SCREEN_HEIGHT if ratio > 0 else 1.0
-    bar = max(0.0, (1.0 - keep) / 2) * 100
-
-    def _apply(_input: Input) -> Generator[IShader, Any, None]:
-        for b, i in easing.rangeIdx(0.0, bar, duration):
-            yield _crop(top=b, bottom=b).at(start=start + i * SINGLE_FRAME)
-        yield from _hold(_crop(top=bar, bottom=bar), start, duration, hold)
-
-    return _apply
+    return _bars(ratio, start, duration, hold, easing, closing=True)
 
 
 def unscope(
@@ -65,16 +77,5 @@ def unscope(
     hold: sec = HOLD_NONE,
     easing: easing = Easing.Out,
 ) -> Effect:
-    """
-    Open the `scope(ratio=...)` bars back to the full frame, and keep them
-    open for `hold` seconds — see `scope` for why the hold is needed.
-    """
-    keep = (SCREEN_WIDTH / ratio) / SCREEN_HEIGHT if ratio > 0 else 1.0
-    bar = max(0.0, (1.0 - keep) / 2) * 100
-
-    def _apply(_input: Input) -> Generator[IShader, Any, None]:
-        for b, i in easing.rangeIdx(bar, 0.0, duration):
-            yield _crop(top=b, bottom=b).at(start=start + i * SINGLE_FRAME)
-        yield from _hold(_crop(top=0.0, bottom=0.0), start, duration, hold)
-
-    return _apply
+    """Open the `scope(ratio=...)` bars back to the full frame, and keep it open for `hold` seconds — see `scope`."""
+    return _bars(ratio, start, duration, hold, easing, closing=False)
