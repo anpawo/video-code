@@ -1810,8 +1810,12 @@ void VC::Editor::clickAt(const QPointF& pos)
         return;
 
     QMouseEvent press(QEvent::MouseButtonPress, pos, window->mapToGlobal(pos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
-    QMouseEvent release(QEvent::MouseButtonRelease, pos, window->mapToGlobal(pos), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
     QCoreApplication::sendEvent(window, &press);
+    // Built only once the press has gone. On Qt 6.8 a mouse event's constructor
+    // writes its state into a point it still shares with the events built
+    // before it (6.11 detaches first): a release built here first turned the
+    // waiting press into a release, no item took it, and the click did nothing.
+    QMouseEvent release(QEvent::MouseButtonRelease, pos, window->mapToGlobal(pos), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
     QCoreApplication::sendEvent(window, &release);
     std::cout << std::format("Probed a click at ({}, {})\n", pos.x(), pos.y());
 }
