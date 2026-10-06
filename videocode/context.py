@@ -740,10 +740,10 @@ class Context:
         other way round send it from 0 up to 2. Same intent, two videos, and
         nothing said so.
 
-        Repairing it means resolving a base against the stack at the frame the
-        window opens — and which statement opens first cannot be known until
-        every line has run. That is a change of when the whole scene is baked, so
-        this names the trap rather than fixing it.
+        That was before S1. Which statement opens first cannot be known until
+        every line has run, so a run that finds one of these is run again with
+        each base read at the frame its window opens (`_runUntilStable`): this
+        is what asks for that second pass, and no longer something to warn of.
 
         A group re-emitting its own window reaches back all the time and is
         supposed to: derived spans are ignored.

@@ -143,10 +143,10 @@ para.curY = 0
 para.newline().newline()
 
 timestamp("text: image")
-para.waitFor(g).add(textImg1 := Code('img = Image("tinder-mail.png").fadeIn().scaleTo(2)')).newline()
+para.waitFor(g).add(textImg1 := Code('img = Image("logo.png").fadeIn().scaleTo(2)')).newline()
 
 timestamp("show: image")
-img = Image("tinder-mail.png").position(sv.b.x, sv.b.y).opacity(0).waitFor(para).wait(PAUSE_DELAY).fadeIn().scaleTo(2).flush()
+img = Image("logo.png").position(sv.b.x, sv.b.y).opacity(0).waitFor(para).wait(PAUSE_DELAY).fadeIn().scaleTo(2).flush()
 
 timestamp("text: image lightsweep")
 para.waitFor(img).wait(PAUSE_DELAY).add(textImg2 := Code("img.apply(lightSweep(width=10), duration=2)")).newline()

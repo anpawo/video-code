@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import math
 import os
 import sys
 
@@ -14,6 +15,7 @@ sys.path.append(".")
 
 from videocode.context import *
 from videocode import *
+import videocode.constants as constants
 from videocode import params
 
 
@@ -95,22 +97,6 @@ def _oneLine(hit: dict) -> str:
     )
 
 
-def _oneLineBackdated(hit: dict) -> str:
-    """
-    The same, for a statement that opens BEHIND one written above it.
-
-    It needs its own sentence: a backdated hit has no `frames`, since the two
-    windows do not have to overlap at all — and reading the contention line's
-    `hit["frames"]` here raised a KeyError that killed the whole render. The
-    warning that names the trap refused to draw the picture.
-    """
-    a, b = hit["a"], hit["b"]
-    return (
-        f"{b['call']}() opens at frame {b['first']}, behind {a['call']}() (line {a['line']}) "
-        f"which was written above it — both write {hit['key']}."
-    )
-
-
 def _reportContendedKeys() -> list[dict]:
     """
     Say it out loud when two statements write the same key over the same frames.
@@ -153,40 +139,6 @@ def _reportBadValues() -> list[dict]:
     return [{"line": b["line"] - 1, "sourceLine": b["line"], "input": b["input"],
              "file": b["file"], "message": b["message"], "severity": 1, "rule": "bad-value"}
             for b in Context.badValues]
-
-
-def _reportBackdatedWrites() -> list[dict]:
-    """
-    Say it out loud when a line reaches back behind one already written.
-
-    An animation reads where to start from the CURSOR, which is right as long as
-    the lines are written in the order they play. A `start=` that opens before a
-    line written above it starts from a value belonging to a moment that has not
-    happened yet — and the same two lines the other way round give a different
-    video. Printed rather than fixed: reading the base from the stack instead
-    would need every line to have run first, which is a change of when the whole
-    scene is baked.
-    """
-    out: list[dict] = []
-    for hit in Context.backdatedWrites():
-        a, b = hit["a"], hit["b"]
-        print(
-            f"[videocode] {os.path.basename(b['file'])}:{b['line']} {b['call']}() opens at frame "
-            f"{b['first']}, behind {os.path.basename(a['file'])}:{a['line']} {a['call']}() which was "
-            f"written above it and opens at frame {a['first']}. Both write {hit['key']}.\n"
-            f"            An animation starts from where the element stands once every line above it "
-            f"has been counted — so this one starts from a value that belongs to a LATER moment, and "
-            f"writing the two lines the other way round gives a different video. Put them in the "
-            f"order they play, or give the earlier one its own start= too.",
-            file=sys.stderr,
-        )
-        # `line` is what the code pane needs (LSP counts from zero); `sourceLine`
-        # and `input` are what the timeline and the effect tree need, so that the
-        # bar and the row carrying the fault are found by identity rather than by
-        # comparing numbers that count from different places.
-        out.append({"line": b["line"] - 1, "sourceLine": b["line"], "input": hit["input"],
-                    "file": b["file"], "message": _oneLineBackdated(hit), "rule": "backdated-write"})
-    return out
 
 
 def _reportLint(model: dict) -> list[dict]:
@@ -254,6 +206,143 @@ def _reportLint(model: dict) -> list[dict]:
             say("last-frame-only", 2, file, line, seen[0]["index"],
                 f"{name} first appears on the film's last frame ({frames - 1}), so it is on screen for one "
                 f"frame — add a wait() after it.")
+    return out
+
+
+# Title safe is the inner 80 % of the frame: 10 % kept clear on each side. The
+# preview draws the same rectangle (PreviewPanel.qml) — the two must agree, or
+# the lint warns about a title the overlay shows inside.
+_TITLE_SAFE = 0.8
+
+
+def _textKinds() -> set[str]:
+    """`Text` and every class built on it, by the name `Context.origin` records."""
+    from videocode.input.shape.text.Text import Text
+
+    kinds: set[str] = set()
+    todo: list[type] = [Text]
+    while todo:
+        cls = todo.pop()
+        kinds.add(cls.__name__)
+        todo += cls.__subclasses__()
+    return kinds
+
+
+def _glyphBoxes(entry: dict, total: int):
+    """
+    Where one glyph is drawn, in pixels (y down), span by span: yields
+    `(first, last, box, seen)` for each run of frames its state holds still.
+
+    The renderer's own arithmetic, redone from the stack it reads: the state a
+    key sets is carried until another key changes it (Core.cpp), the box is
+    the control points' bounding box (BezierPath.cpp), and it is placed by
+    `getTransformationMatrixFromMetadata` — the align point lands on the
+    position, scaled and turned about it. Frames below 0 are skipped, as the
+    renderer skips them.
+    """
+    made = entry[-1]["args"]
+    points = made.get("points") or []
+    x, y = SW / 2, SH / 2
+    ax, ay, sx, sy, turn = 0.5, 0.5, 1.0, 1.0, 0.0
+    opacity, hidden = 255.0, False
+    keyed = sorted({0, *(f for f in entry if f != -1 and 0 <= f < total)})
+    for at, frame in enumerate(keyed):
+        for key, shader in entry.get(frame, {}).items():
+            args = shader.get("args", {})
+            kind = key.split(":")[0]
+            if kind == "Position":
+                x = x if args.get("x") is None else SW / 2 + args["x"] * WORLD_TO_SCREEN_RATIO
+                y = y if args.get("y") is None else SH / 2 - args["y"] * WORLD_TO_SCREEN_RATIO
+            elif kind == "Translate":
+                x, y = x + args["x"] * WORLD_TO_SCREEN_RATIO, y - args["y"] * WORLD_TO_SCREEN_RATIO
+            elif kind == "Align":
+                ax = ax if args.get("x") is None else args["x"]
+                ay = ay if args.get("y") is None else args["y"]
+            elif kind == "Scale":
+                sx, sy = args["x"], args["y"]
+            elif kind == "Rotation":
+                turn = args["degree"]
+            elif kind == "Opacity":
+                opacity = args["opacity"]
+            elif kind == "Hide":
+                hidden = True
+            elif kind == "Show":
+                hidden = False
+            elif key == "Args:points":
+                points = args.get("value") or []
+        if not points:
+            continue
+        w = (max(p[0] for p in points) - min(p[0] for p in points)) * WORLD_TO_SCREEN_RATIO
+        h = (max(p[1] for p in points) - min(p[1] for p in points)) * WORLD_TO_SCREEN_RATIO
+        px, py = w * ax, h * (1 - ay)
+        c, s = math.cos(math.radians(turn)), math.sin(math.radians(turn))
+        corners = []
+        for cx, cy in ((0, 0), (w, 0), (0, h), (w, h)):
+            dx, dy = (cx - px) * sx, (cy - py) * sy
+            corners.append((x + c * dx - s * dy, y + s * dx + c * dy))
+        box = (min(p[0] for p in corners), min(p[1] for p in corners),
+               max(p[0] for p in corners), max(p[1] for p in corners))
+        last = keyed[at + 1] - 1 if at + 1 < len(keyed) else total - 1
+        yield frame, last, box, not hidden and opacity != 0
+
+
+def _reportTitleSafe(model: dict, shape: str) -> list[dict]:
+    """
+    A `Text` that stays outside title safe — the inner 80 % of the frame — on a
+    frame where it is on screen: cut by a TV's overscan, under a phone app's
+    buttons. A warning, never an error: an edge can be the design.
+
+    "Stays", because a title sliding in from off-screen crosses the margin on
+    purpose: a frame counts when the glyph holds that box into the next frame,
+    or it is the film's last. A glyph wholly off the frame is not this rule's
+    business either — it is being kept there. One finding per call site, at
+    the first frame it happens, naming the shape it was checked in.
+    """
+    frames, fps = model["frames"], model["fps"]
+    kinds = _textKinds()
+    left, top = SW * (1 - _TITLE_SAFE) / 2, SH * (1 - _TITLE_SAFE) / 2
+    right, bottom = SW - left, SH - top
+    # ponytail: a moving camera moves everything not pinned to the frame, and
+    # its transform is not redone here; the rule stands down for those rather
+    # than guess. A composition member is drawn into its layer's space: same.
+    filmed = any(entry[-1]["type"] == "Camera" for entry in Context.stack.values())
+    worst: dict[tuple[str, int], tuple[int, str, float, int]] = {}
+    for element in model["elements"]:
+        entry = Context.stack[element["index"]]
+        if element["kind"] not in kinds or entry[-1]["args"].get("open"):
+            continue
+        keys = {key for frame, shaders in entry.items() if frame != -1 for key in shaders}
+        if "CompositionMember" in keys or (filmed and "PinToFrame" not in keys):
+            continue
+        spans = list(_glyphBoxes(entry, frames))
+        for at, (first, last, box, seen) in enumerate(spans):
+            if not seen:
+                continue
+            following = spans[at + 1][2] if at + 1 < len(spans) else box
+            rests = last > first or last == frames - 1 or all(abs(a - b) < 1e-6 for a, b in zip(box, following))
+            onFrame = box[0] < SW and box[2] > 0 and box[1] < SH and box[3] > 0
+            if not rests or not onFrame:
+                continue
+            # How far inside the margin each side reaches, in pixels; half a
+            # pixel of slack for the arithmetic, which is float on both sides.
+            past = {"left": left - box[0], "right": box[2] - right, "top": top - box[1], "bottom": box[3] - bottom}
+            edge = max(past, key=lambda side: past[side])
+            if past[edge] <= 0.5:
+                continue
+            where = (element["file"], element["line"])
+            if where not in worst or first < worst[where][0]:
+                worst[where] = (first, edge, past[edge], element["index"])
+            break
+
+    out: list[dict] = []
+    for (file, line), (first, edge, depth, index) in worst.items():
+        keep = round(left if edge in ("left", "right") else top)
+        gap = round(keep - depth)
+        reach = f"comes within {gap} px of the {edge} edge" if gap >= 0 else f"runs {-gap} px past the {edge} edge"
+        out.append({"line": line - 1, "sourceLine": line, "input": index, "file": file, "severity": 2, "rule": "title-safe",
+                    "message": f"Text leaves title safe in the {shape} frame from frame {first} ({first / fps:.2f} s): it "
+                               f"{reach}, and title safe keeps {keep} px clear there — a TV may crop it, a phone app "
+                               f"may cover it."})
     return out
 
 def _applyBackground(scope: dict) -> None:
@@ -417,7 +506,6 @@ def execScene(filepath: str) -> None:
     params.checkRun()
     _applyBackground(scope)
     _reportContendedKeys()
-    _reportBackdatedWrites()
 
 
 def sceneModel() -> dict:
@@ -1157,7 +1245,7 @@ def execSource(source: str, filepath: str) -> dict:
         # video" reached nobody who was editing. `Editor::executeScene` copies
         # every key of this dict through to QML, so returning them is the whole
         # of the wiring.
-        warnings = _reportContendedKeys() + _reportBackdatedWrites() + _reportBadValues()
+        warnings = _reportContendedKeys() + _reportBadValues()
         warnings = [w for w in warnings if w["file"] == filepath]
     except SyntaxError as error:
         return {
@@ -1206,8 +1294,8 @@ def execSource(source: str, filepath: str) -> dict:
     }
 
 
-def _lintOnce(source: str, filepath: str) -> set[tuple]:
-    """One run's findings, as (file, line, severity, message, rule)."""
+def _lintOnce(source: str, filepath: str, shape: str) -> set[tuple]:
+    """One run's findings, as (file, line, severity, message, rule); `shape` is the frame's name, for title-safe."""
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         report = execSource(source, filepath)
         if not report["ok"]:
@@ -1215,12 +1303,34 @@ def _lintOnce(source: str, filepath: str) -> set[tuple]:
             if message.startswith("ParamError: "):
                 return {(filepath, report["line"] + 1, "error", message.removeprefix("ParamError: "), "param")}
             return {(filepath, report["line"] + 1, "error", message, "scene-error")}
-        found = _reportContendedKeys() + _reportBackdatedWrites() + _reportBadValues() + _reportLint(json.loads(report["scene"]))
+        found = _reportContendedKeys() + _reportBadValues() + _reportLint(json.loads(report["scene"]))
+        found += _reportTitleSafe(json.loads(report["scene"]), shape)
     return {(w["file"], w["sourceLine"], "error" if w.get("severity") == 1 else "warning", w["message"], w["rule"])
             for w in found}
 
 
-def lintSource(source: str, filepath: str, sets: list[str] | None = None, data: str = "") -> tuple[str, int]:
+@contextlib.contextmanager
+def _inFrame(width: int, height: int):
+    """
+    Run the scene in another frame for as long as this lasts — the Python half
+    of what `applyScreenSize` does before each `--for` render — and put the
+    frame it found back after.
+    """
+    before = (SW, SH, os.environ.get("VC_SCREEN"))
+    os.environ["VC_SCREEN"] = f"{width}x{height}"
+    constants.setScreen(width, height)
+    try:
+        yield
+    finally:
+        constants.setScreen(before[0], before[1])
+        if before[2] is None:
+            os.environ.pop("VC_SCREEN", None)
+        else:
+            os.environ["VC_SCREEN"] = before[2]
+
+
+def lintSource(source: str, filepath: str, sets: list[str] | None = None, data: str = "",
+               shapes: list[tuple[str, int, int]] | None = None) -> tuple[str, int]:
     """
     `--lint`: run a scene without rendering it and say what is wrong with it, one
     `file:line: error|warning: message [rule]` per line, and 1 if any is an error.
@@ -1233,29 +1343,37 @@ def lintSource(source: str, filepath: str, sets: list[str] | None = None, data: 
     With `--set`/`--data` the scene runs once per row, given that row, so a
     required param() nobody gave, a --set key nothing reads and a cell that
     does not read as its parameter's type are all found without a frame being
-    rendered. A finding every row shares is said once.
+    rendered. With `--for`, `shapes` — (name, width, height) — and the scene
+    runs again in each frame, as the renders would: a title safe in 16:9 is
+    not in 9:16. A finding every row and every shape shares is said once.
     """
     said: set[tuple] = set()
+    rows: list[dict] = []
     if sets or data:
         try:
             rows = params.plan(sets or [], data, "lint.mp4")
         except params.ParamError as error:
             return f"{filepath}: error: {error} [param]\n", 1
-        before = os.environ.get("VC_PARAMS")
-        try:
-            for row in rows:
-                params.provide(row["params"])
-                said |= _lintOnce(source, filepath)
-        finally:
-            if before is None:
-                os.environ.pop("VC_PARAMS", None)
-            else:
-                os.environ["VC_PARAMS"] = before
+    for name, width, height in shapes or [("", SW, SH)]:
+        shape = f"{name} ({width}x{height})" if name else f"{width}x{height}"
+        with _inFrame(width, height):
+            if not rows:
+                said |= _lintOnce(source, filepath, shape)
+                continue
+            before = os.environ.get("VC_PARAMS")
+            try:
+                for row in rows:
+                    params.provide(row["params"])
+                    said |= _lintOnce(source, filepath, shape)
+            finally:
+                if before is None:
+                    os.environ.pop("VC_PARAMS", None)
+                else:
+                    os.environ["VC_PARAMS"] = before
+    if rows:
         unread = params.unreadColumns().removeprefix("video-code: warning: ").strip()
         if unread:
             said.add((filepath, 1, "warning", unread, "unread-column"))
-    else:
-        said = _lintOnce(source, filepath)
     lines = sorted(said)
     return "".join(f"{f}:{n}: {s}: {m} [{r}]\n" for f, n, s, m, r in lines), int(any(s == "error" for _, _, s, _, _ in lines))
 

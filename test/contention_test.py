@@ -227,6 +227,18 @@ check(
     xAt(TYPED, 0) < 0.1,
 )
 
+# So there is nothing left to warn about: the run that reaches back bakes the
+# film the other order bakes. The warning outlived the repair for three weeks,
+# on the run's stderr, under the line in the editor and in --lint — telling
+# people to reorder lines whose order no longer changes anything.
+said = io.StringIO()
+with contextlib.redirect_stderr(said):
+    told = execSource("from videocode import *\n" + TYPED + "\nwait(4)\n", "contention_test_order.py")
+check(
+    f"a line that reaches back is not warned about any more ({told['warnings']} · {said.getvalue()[:60]!r})",
+    "backdated" not in told["warnings"] and "written above it" not in said.getvalue(),
+)
+
 # One reprise repairs one link, so a CHAIN written backwards needs the scene
 # replayed until it stops moving: the second `moveBy` reads its base from a run
 # where the third was itself mis-based. Three moves of +1 end at 3, whichever

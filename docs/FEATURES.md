@@ -356,7 +356,8 @@ Every `Input` (shape, text, group, ...) has:
 
 **Eased animations** (`start`, `duration`, `easing: RateFunc`):
 - `moveTo`/`moveBy`, `scaleTo`/`scaleBy`, `rotateTo`/`rotateBy`,
-  `alignTo`, `fadeIn`/`fadeOut`
+  `alignTo`, `fadeIn`/`fadeOut`, `fadeTo(o)` — to an opacity, from wherever
+  it stands
 - `moveAlong(path, face=False)` — travel a `Curve` (or any list of points) at
   ONE SPEED: the walk is measured first and each frame steps the same distance
   along it, because the points a curve is written with are dense at its bends
@@ -435,21 +436,12 @@ nothing else:
 - **A channel nobody claims on a frame keeps the value it last had** — a
   transform holds until the next one, so an effect that ends early does not snap
   back.
-- **Write the lines in the order they play.** An animation reads where to start
-  from the CURSOR — where the element stands once every line above it has been
-  counted. That is right until a `start=` reaches back behind a line already
-  written: `moveTo(x=5, start=2)` followed by `moveTo(x=2)` sends x from 4.99
-  **down** to 2 over the first second, where the same two lines the other way
-  round send it from 0 up to 2. Same intent, two videos. A run says so:
-
-  ```
-  [videocode] scene.py:5 moveTo() opens at frame 0, behind scene.py:4 moveTo()
-              which was written above it and opens at frame 60.
-  ```
-
-  Reading the base from the timeline instead would fix it, but which statement
-  opens first is not known until every line has run — that is a change of when
-  the whole scene is baked, and it has not been made.
+- **The order the lines are typed in does not change the film.** An animation
+  starts from the value its element has on the frame it OPENS, not from where
+  the lines above happened to leave it: `moveTo(x=5, start=2)` followed by
+  `moveTo(x=2)` plays exactly like the same two lines the other way round. A
+  scene with a `start=` that reaches back behind a line written above it is run
+  again until every base is the one of its own frame.
 - **A group works the same way**, on its own channels — see *Grouping &
   Composition*. And its own working-out is not a rival: `g.scaleTo(...)
   .rotateBy(...)` re-emits position for every member on both calls;
@@ -826,6 +818,7 @@ Everything downstream is derived, never declared:
 | `WORLD_WIDTH` / `WORLD_HEIGHT` | `screen / WORLD_TO_SCREEN_RATIO` — 16x9 at 1920x1080, 9x16 at 1080x1920 |
 | `WORLD_OFFSET_X/Y`, `TOP_SIDE`, `BL`, `TR`, ... | from the world box |
 | the Qt preview window | `screen * --windowRatio`, so it always has the output's shape |
+| the editor's preview and its exports | `--editor -w 1080 --height 1920` makes, previews and exports a 1080x1920 scene |
 
 How: `VC::makeConfig` reads the two flags, points the world->pixel transform at
 them (`config::screen`/`screenOffset`) and exports `VC_SCREEN`, all before
@@ -1017,7 +1010,7 @@ Easing curves (`videocode/utils/bezier.py`):
 | `-w`/`--width`, `--height` | Output resolution in pixels (default 1920x1080). The only way to set it. See *Render size* |
 | `--framerate` | Output fps — scenes are authored at 30fps and resampled |
 | `--from <s\|name>` / `--to <s\|name>` | Render only that stretch of the scene — seconds (`--from 12.5`) or the name of a `timestamp()` written in it (`--from "show: rectangle"`). Frames are `[from, to)`; past the end clamps. Sounds keep their place: one that began before `--from` is heard from where the stretch enters it. With an image extension, `--from` picks the still. See *Render a stretch* |
-| `--for <shapes>` | Render the scene once per named shape — `youtube`, `tiktok`, `square` — one file each, the shape in the filename. Each render RE-RUNS the scene at that resolution, so the scene lays itself out for it. See *One scene, every format* |
+| `--for <shapes>` | Render the scene once per named shape — `youtube`, `tiktok`, `square` — one file each, the shape in the filename. Each render RE-RUNS the scene at that resolution, so the scene lays itself out for it. With `--lint`, check the scene in each shape instead. See *One scene, every format* |
 | `--set key=value` | Give a `param()` of the scene a value, read as its default's type. Repeatable. Also with `--lint` and `--editor`. See *One scene, many videos* |
 | `--data rows.csv\|rows.json` | Render the scene once per row, each column a `param()`; `--generate "out/{name}.mp4"` names the files. See *One scene, many videos* |
 | `--hwencode` | Hardware H.264 encode (videotoolbox, macOS) |
@@ -1076,9 +1069,10 @@ Exit 1 if any line is an error; warnings alone exit 0. The rules:
 | `before-start` | error | a write before frame 0, which the renderer skips, or a negative `Sound` delay |
 | `never-visible` | warning | hidden or at opacity 0 on every frame |
 | `last-frame-only` | warning | made after the final `wait()`, so on screen for one frame |
-| `bad-value`, `contended-key`, `backdated-write` | as in the editor | what the Code pane already underlines |
+| `bad-value`, `contended-key` | as in the editor | what the Code pane already underlines |
 | `param` | error | with `--set`/`--data`: a required `param()` nobody gave, a value that does not read as its type, a `--set` key no `param()` reads |
 | `unread-column` | warning | with `--data`: a column no row's run read |
+| `title-safe` | warning | a `Text` resting outside title safe — the inner 80 % of the frame — on a frame where it is on screen |
 
 The same findings reach the editor, underlined in the Code pane and hatched on
 the clip — except `last-frame-only`, which every line typed at the end of a
@@ -1089,6 +1083,50 @@ exit code.
 `--lint --set …` and `--lint --data rows.csv` run the scene once per row with
 that row's values, so a batch is checked before a frame of it is drawn; a finding
 every row shares is said once.
+
+`title-safe` is a question about a frame, so it is asked in each one the scene
+will be rendered in: `--lint --for youtube,tiktok,square` re-runs the scene in
+each shape, as the renders do, and without `--for` the `--width`/`--height`
+frame is the one checked.
+
+```bash
+./video-code --lint --file scene.py --for youtube,tiktok
+# scene.py:4: warning: Text leaves title safe in the tiktok (1080x1920) frame from frame 0 (0.00 s):
+#   it runs 4 px past the left edge, and title safe keeps 108 px clear there — … [title-safe]
+```
+
+It says the line, the shape and the first frame, and how close the text comes
+to the edge. "Resting": a frame counts when the glyph holds that box into the
+next one, or it is the last — a title sliding in from off-screen crosses the
+margin on purpose and is silent, and so is a text kept wholly off the frame.
+The box is the renderer's own arithmetic, redone from the stack it reads
+(`getTransformationMatrixFromMetadata` on the control points' bounding box):
+the same pixel as a render for an upright text, a little generous for a turned
+one. Under a moving camera only texts `pinToFrame()`d are checked, and members
+of a `Composition` are not — the rule stands down rather than guess. The
+editor does not underline it: its preview draws the same rectangle instead.
+
+### Safe margins in the preview — `'`
+
+The preview's guides, after Premiere's Program Monitor: **action safe** (90 %)
+and **title safe** (80 %) outlined over the picture, and a small cross at its
+centre. `'` (Premiere's key, rebindable on the keyboard board) or the `▣` in the
+viewbar turns them on and off; the choice is kept with the keys in the dock
+file. They are drawn over the picture's own rect, so they follow the letterbox
+and every resize, and they are a guide only — the renderer never sees them,
+nothing of them reaches `--generate`. Title safe is the lint's rectangle.
+
+On a **9:16** frame (`--editor -w 1080 --height 1920`) the zones TikTok, Reels
+and Shorts cover with their UI are shaded as well: the tabs at the top, the
+button column on the right, the caption band at the bottom. The numbers are
+one table in `qml/VideoCode/PreviewPanel.qml` (`platformZones`), in pixels of a
+1080x1920 frame, the union of the three apps — and **approximate**: rounded
+from creator safe-zone templates and the apps' ad guidelines, not measured
+here; no app publishes them for an ordinary post, and every redesign moves
+them.
+
+`tell state` says whether they are on (`guides`) and the frame (`frame`), so a
+screenshot's rectangles are not mistaken for the scene's.
 
 ### Reading the editor from outside — `tell verify`
 

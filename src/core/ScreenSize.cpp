@@ -169,27 +169,11 @@ void VC::applyParams(const Config &config)
     }
 }
 
-std::vector<Config> VC::makeConfigs(const argparse::ArgumentParser &parser)
+std::vector<VC::NamedShape> VC::shapesFor(const argparse::ArgumentParser &parser)
 {
-    const Config           base = makeConfig(parser);
-    const std::string      asked = parser.present("--for").value_or("");
-    const std::vector<Row> rows = planRows(parser, base.outputFile);
-
-    // Each row, then each shape inside it: a row's files sit together, and a
-    // row that fails stops the batch with the rows after it named as not made.
-    const auto withRow = [](Config config, const Row &row) {
-        config.params = row.params;
-        config.outputFile = row.output;
-        config.shapeNote = row.note;
-        return config;
-    };
-
-    if (asked.empty()) {
-        std::vector<Config> configs;
-        for (const Row &row : rows)
-            configs.push_back(withRow(base, row));
-        return configs;
-    }
+    const std::string asked = parser.present("--for").value_or("");
+    if (asked.empty())
+        return {};
 
     // The shapes decide the size, so the size flags cannot also. Said rather
     // than resolved quietly: `-w 800 --for tiktok` is a person expecting one
@@ -197,7 +181,7 @@ std::vector<Config> VC::makeConfigs(const argparse::ArgumentParser &parser)
     if (parser.is_used("--width") || parser.is_used("--height"))
         std::cerr << "video-code: --for decides the resolution — the --width/--height you gave are not used.\n";
 
-    std::vector<Config> shapes;
+    std::vector<NamedShape> shapes;
     for (size_t start = 0; start <= asked.size();) {
         const size_t      comma = std::min(asked.find(',', start), asked.size());
         const size_t      from = asked.find_first_not_of(" \t", start);
@@ -213,13 +197,41 @@ std::vector<Config> VC::makeConfigs(const argparse::ArgumentParser &parser)
             std::cerr << std::format("video-code: --for does not know the shape \"{}\". It knows {}.\n", name, shapeNames());
             std::exit(EXIT_FAILURE);
         }
+        shapes.push_back({name, shape->width, shape->height});
+    }
+    return shapes;
+}
 
+std::vector<Config> VC::makeConfigs(const argparse::ArgumentParser &parser)
+{
+    const Config           base = makeConfig(parser);
+    const std::vector<Row> rows = planRows(parser, base.outputFile);
+
+    // Each row, then each shape inside it: a row's files sit together, and a
+    // row that fails stops the batch with the rows after it named as not made.
+    const auto withRow = [](Config config, const Row &row) {
+        config.params = row.params;
+        config.outputFile = row.output;
+        config.shapeNote = row.note;
+        return config;
+    };
+
+    const std::vector<NamedShape> asked = shapesFor(parser);
+    if (asked.empty()) {
+        std::vector<Config> configs;
+        for (const Row &row : rows)
+            configs.push_back(withRow(base, row));
+        return configs;
+    }
+
+    std::vector<Config> shapes;
+    for (const NamedShape &shape : asked) {
         Config config = base;
-        config.screenWidth = shape->width;
-        config.screenHeight = shape->height;
+        config.screenWidth = shape.width;
+        config.screenHeight = shape.height;
         config.windowWidth = config.screenWidth * config.windowRatio;
         config.windowHeight = config.screenHeight * config.windowRatio;
-        config.shapeNote = name;
+        config.shapeNote = shape.name;
         shapes.push_back(config);
     }
 

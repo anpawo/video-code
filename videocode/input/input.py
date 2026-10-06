@@ -805,6 +805,16 @@ class Input(ABC):
         return self
 
     @_rebasing
+    def fadeTo(self, o: uint8, *, easing: easing = Easing.InOut, start: sec = 0, at: maybe[sec] = None, duration: sec = 0.4) -> Self:
+        """
+        Fade to an opacity, 0–255, from wherever it stands.
+
+            photo.fadeTo(80)             # dimmed, not gone
+            photo.fadeTo(255, at=4.2)    # back, starting at 4.2 s of the film
+        """
+        return self.apply(*fadeTo(self, dst=o, easing=easing, start=start, duration=duration), at=at)
+
+    @_rebasing
     def scaleTo(
         self,
         factor: maybe[number] = None,

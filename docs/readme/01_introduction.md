@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo/videocode.svg" width="120" alt="Videocode"></p>
+<p align="center"><img src="assets/logo/lockup.svg" width="320" alt="videocode"></p>
 
 # Video-Code
 The initial goal of this project is to create videos from code.<br>

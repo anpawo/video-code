@@ -131,10 +131,15 @@ namespace VC
     Q_SIGNALS:
         //: A sentence from the agent.
         void said(const QString& text);
+        //: It is reasoning. `tokens` is how much so far: the stream counts
+        //: while it thinks and — measured on 2 Oct. 2026 — hands over an EMPTY
+        //: block once it has, the words signed and withheld. `text` is those
+        //: words, for a model that does give them.
+        void thinking(int tokens, const QString& text);
         //: It is about to use a tool. `summary` is a short human line — the
-        //: file for a read, the command for a shell call. `id` is what the
-        //: answer will carry.
-        void toolStarted(const QString& id, const QString& name, const QString& summary);
+        //: file for a read, the command for a shell call — and `input` its
+        //: arguments as they were sent. `id` is what the answer will carry.
+        void toolStarted(const QString& id, const QString& name, const QString& summary, const QString& input);
         //: The tool answered. Matched to its call by `id` and NOT by arrival
         //: order: calls go out in parallel and come back in whichever order they
         //: finish — measured, two `Read`s returned with the failing one first.

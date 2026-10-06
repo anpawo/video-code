@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QRegularExpression>
 #include <QStandardPaths>
 
 #include "agent/LineDiff.hpp"
@@ -39,6 +40,17 @@ namespace
         if (all.size() <= lines)
             return text;
         return all.mid(0, lines).join('\n') + QStringLiteral("\n… %1 more lines").arg(all.size() - lines);
+    }
+
+    // The words alone. A MessageDisplay hook written for the terminal colours a
+    // line with escape codes and pads it to the terminal's width with no-break
+    // spaces, and `-p` hands both over as text — measured, one answer carried
+    // two colour runs and 130 of those spaces.
+    QString plain(QString text)
+    {
+        static const QRegularExpression paint(QStringLiteral("\x1b\\[[0-9;]*m"));
+        static const QRegularExpression padding(QStringLiteral("\u00a0+$"), QRegularExpression::MultilineOption);
+        return text.remove(paint).remove(padding).trimmed();
     }
 }
 
@@ -352,12 +364,14 @@ void VC::AgentSession::handle(const QJsonObject& event)
         // a new conversation — only of a session id worth keeping. The rest of
         // the system traffic is machinery: one turn measured 2 `hook_started`,
         // 2 `hook_response`, 13 `thinking_tokens` and a `rate_limit_event`.
-        // None of it is something a reader wants to see.
+        // Only the count of its thinking is something a reader wants to see.
         const QString id = event.value("session_id").toString();
         if (!id.isEmpty() && id != _session) {
             _session = id;
             Q_EMIT sessionIdChanged();
         }
+        if (event.value("subtype").toString() == QLatin1String("thinking_tokens"))
+            Q_EMIT thinking(event.value("estimated_tokens").toInt(), QString());
         return;
     }
 
@@ -411,11 +425,15 @@ void VC::AgentSession::handleAssistant(const QJsonObject& message)
         const QJsonObject block = value.toObject();
         const QString     kind = block.value("type").toString();
 
-        // `thinking` blocks are deliberately not shown. The pane is a record of
-        // what was DONE — the sentence and the call — and reasoning read
-        // half-finished is worse than no reasoning at all.
-        if (kind == QLatin1String("text")) {
-            const QString sentence = block.value("text").toString().trimmed();
+        // A `thinking` block arrives whole, once the reasoning is over, and
+        // usually empty: the words are withheld and only their count was
+        // streamed. When a model does give them, they are a step like a call.
+        if (kind == QLatin1String("thinking")) {
+            const QString words = block.value("thinking").toString().trimmed();
+            if (!words.isEmpty())
+                Q_EMIT thinking(0, shorten(words));
+        } else if (kind == QLatin1String("text")) {
+            const QString sentence = plain(block.value("text").toString());
             if (!sentence.isEmpty())
                 Q_EMIT said(sentence);
         } else if (kind == QLatin1String("tool_use")) {
@@ -425,7 +443,8 @@ void VC::AgentSession::handleAssistant(const QJsonObject& message)
             // answers, never its name, and a row that says "finished" without
             // saying what finished is not worth drawing.
             _calls.insert(id, name);
-            Q_EMIT toolStarted(id, name, summarise(name, block.value("input").toObject()));
+            const QJsonObject input = block.value("input").toObject();
+            Q_EMIT toolStarted(id, name, summarise(name, input), shorten(QString::fromUtf8(QJsonDocument(input).toJson()).trimmed()));
         }
     }
 }

@@ -177,6 +177,14 @@ namespace VC
         Q_INVOKABLE QString readTextFile(const QString& path) const;
         Q_PROPERTY(bool headless READ headless CONSTANT)
 
+        // The frame the scene is made in: --width/--height, 1920x1080 unless the
+        // editor was started with others. The preview draws its picture at this
+        // aspect, and its safe margins and platform zones are fractions of it.
+        Q_PROPERTY(int frameWidth READ frameWidth CONSTANT)
+        Q_PROPERTY(int frameHeight READ frameHeight CONSTANT)
+        int frameWidth() const;
+        int frameHeight() const;
+
         //: Try to read pixels out of a window that was never shown. Whether
         //: this works at all is what it is here to find out: Qt's documented
         //: path for a picture with no window is QQuickRenderControl, and the

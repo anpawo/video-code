@@ -39,13 +39,6 @@ class Shard(Enum):
     Tenacity = "Tenacity_and_Slow_Resist"
 
 
-class RuneData:
-    def __init__(self, elem: Rune | Shard, url: url, input: WebImage) -> None:
-        self.name: Rune | Shard = elem
-        self.url: url = url
-        self.input: WebImage = input
-
-
 Color: dict[Path, str] = {
     Path.Precision: "Yellow",
     Path.Domination: "Red",

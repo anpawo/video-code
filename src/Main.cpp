@@ -29,6 +29,7 @@
 #include <format>
 #include <fstream>
 #include <opencv2/core/utils/logger.hpp>
+#include <tuple>
 
 #include "compiler/Compiler.hpp"
 #include "core/ScreenSize.hpp"
@@ -166,7 +167,8 @@ void setParserArgument(argparse::ArgumentParser &p)
             "Run --file without rendering and print what is wrong with it, one "
             "`file:line: error|warning: message [rule]` per line: the scene failing to run, a Sound "
             "starting on or after the last frame, a write before frame 0, an element never on screen "
-            "or only on the last frame, and the warnings the editor shows. Exits 1 if any line is an error."
+            "or only on the last frame, a Text resting outside title safe (the inner 80 %) — in each --for shape, "
+            "or the --width/--height frame — and the warnings the editor shows. Exits 1 if any line is an error."
         );
 
     p
@@ -236,7 +238,8 @@ void setParserArgument(argparse::ArgumentParser &p)
             "With --generate, render the scene once per named shape — youtube (1920x1080), "
             "tiktok (1080x1920), square (1080x1080) — writing one file per shape, its name in "
             "the filename. Each one RE-RUNS the scene in that frame, so the scene lays itself "
-            "out for it (Split.AUTO, W/H, TOP_SIDE); nothing is cropped or scaled."
+            "out for it (Split.AUTO, W/H, TOP_SIDE); nothing is cropped or scaled. With --lint, "
+            "check the scene in each of them instead."
         );
 
     p
@@ -336,8 +339,16 @@ static int run(argparse::ArgumentParser &parser, int argc, char *argv[])
         }
         const std::string source((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         if (lint) {
+            // The frames to check the scene in: each --for shape, as the renders
+            // would re-run it, or the --width/--height one. Title safe is a
+            // question about a frame, and a 16:9 answer says nothing of 9:16.
+            std::vector<std::tuple<std::string, int, int>> shapes;
+            for (const VC::NamedShape &shape : VC::shapesFor(parser))
+                shapes.emplace_back(shape.name, (int)shape.width, (int)shape.height);
+            if (shapes.empty())
+                shapes.emplace_back("", (int)parser.get<float>("--width"), (int)parser.get<float>("--height"));
             const py::tuple said = py::module::import("videocode.serialize")
-                                       .attr("lintSource")(source, path, parser.get<std::vector<std::string>>("--set"), parser.present("--data").value_or(""))
+                                       .attr("lintSource")(source, path, parser.get<std::vector<std::string>>("--set"), parser.present("--data").value_or(""), shapes)
                                        .cast<py::tuple>();
             std::cout << said[0].cast<std::string>() << std::flush;
             return said[1].cast<int>();
@@ -457,6 +468,10 @@ static int run(argparse::ArgumentParser &parser, int argc, char *argv[])
         // flag on the line always outranks the environment it inherited.
         if (parser.is_used("--file"))
             qputenv("VC_SCENE_FILE", QByteArray::fromStdString(parser.get<std::string>("--file")));
+
+        // The frame the editor makes the scene in, from --width/--height like a
+        // render's: a 1080x1920 scene is previewed as one, and exported as one.
+        VC::makeConfig(parser);
 
         // --set previews one set of values — a row of the batch, say — in the
         // editor, and reaches the export it launches through the environment.

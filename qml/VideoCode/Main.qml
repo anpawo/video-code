@@ -1196,7 +1196,8 @@ ApplicationWindow {
             saved: saved,
             codeTheme: Theme.codeTheme,
             codeThemePicked: codeThemePicked,
-            keymap: Keymap.bindings
+            keymap: Keymap.bindings,
+            safeMargins: safeMargins
         }));
     }
 
@@ -1298,6 +1299,7 @@ ApplicationWindow {
             if (codeThemePicked && Theme.codeThemes[parsed.codeTheme] !== undefined)
                 Theme.codeTheme = parsed.codeTheme;
             Keymap.restore(parsed.keymap);
+            safeMargins = parsed.safeMargins === true;
 
             // The trees that DO come from disk are data from another run: they
             // may name panels this build no longer has. Anything unrecognised is
@@ -1492,6 +1494,15 @@ ApplicationWindow {
     // a layout: the old default was written to disk and would look like a
     // decision nobody made.
     property bool codeThemePicked: false
+
+    // The preview's safe margins. Kept in the dock file with the keys and the
+    // code theme: whether you work with guides on is a habit, not an attempt.
+    property bool safeMargins: false
+
+    function toggleSafeMargins() {
+        safeMargins = !safeMargins;
+        saveLayout();
+    }
 
     function openScene(path) {
         scenePath = path;
@@ -2859,6 +2870,92 @@ ApplicationWindow {
         return Shell.positionalSpan(source.text, gap.line, "wait", 0, app.plain(gap.d + 1));
     }
 
+    // ── The stopwatch ─────────────────────────────────────────────────────
+    // A value typed at the playhead writes the animation that reaches it THERE:
+    // `box.moveTo(x=3, at=2.1)` lands on the playhead's frame. `at=` and not
+    // `start=`, because the moment is the film's and not the element's clock —
+    // measured, such a line moves no clock, so nothing written after it shifts.
+    readonly property var keyVerbs: ({
+        "Position:x": "moveTo(x=", "Position:y": "moveTo(y=",
+        "Scale:x": "scaleTo(x=", "Scale:y": "scaleTo(y=",
+        "Rotation": "rotateTo(", "Opacity": "fadeTo(",
+        "Align:x": "alignTo(x=", "Align:y": "alignTo(y="
+    })
+
+    function keyAt(element, key, value, frame) {
+        const fps = execFps > 0 ? execFps : 30;
+        const what = key.replace(":", " ").toLowerCase();
+        const at = (frame / fps).toFixed(2) + "s";
+        if (app.keyVerbs[key] === undefined || isNaN(Number(value)))
+            return false;
+        if (!app.fromOpenFile(element.file)) {
+            source.say(app.foreignLine(element.file));
+            return false;
+        }
+        const declaration = source.text.split("\n")[element.line - 1];
+        if (declaration === undefined || !new RegExp("^\\s*" + element.n + "\\s*=").test(declaration)) {
+            source.say("give it a name first — " + element.cls + "(...) on its own cannot be told to change");
+            return false;
+        }
+        const born = Math.round(element.l * fps);
+        if (frame <= born) {
+            source.say("at its first frame a value is where " + element.n + " starts — type it in Transform");
+            return false;
+        }
+
+        // Twelve frames, the verbs' own length — or as many as the channel
+        // has free: on a frame a line already sets, the value is that line's
+        // to say, and right after one the animation starts where it ends.
+        let from = Math.max(born, frame - 11);
+        for (const fx of element.effects) {
+            if (fx.kinds.indexOf(key) < 0)
+                continue;
+            const first = Math.round(fx.l * fps), last = first + Math.round(fx.d * fps) - 1;
+            if (first <= frame && frame <= last) {
+                source.say(fx.n + "() on line " + fx.line + " is setting " + what + " at " + at + " — the value there is that line's to say");
+                return false;
+            }
+            if (last < frame)
+                from = Math.max(from, last + 1);
+        }
+        const frames = frame - from + 1;
+        const duration = frames === 12 ? "" : ", duration=" + app.plain(Math.ceil(frames / fps * 100 - 1e-6) / 100);
+        const statement = element.n + "." + app.keyVerbs[key] + value + ", at=" + app.plain(from / fps) + duration + ")";
+
+        // Under the last line of its own that has not gone past the start, and
+        // under every wait() that begins before the end: a wait starts when the
+        // last thing written above it has ended, so one left below would be
+        // pushed.
+        const point = app.pointFor(element, from);
+        let line = point !== null ? point.line : element.line;
+        const gaps = liveScene.waits !== undefined ? liveScene.waits : [];
+        for (const gap of gaps)
+            if (Math.round(gap.at * fps) <= frame && gap.line > line)
+                line = gap.line;
+
+        // The run is the judge: the film keeps its length and its waits, and
+        // no two lines end up claiming the same frames.
+        const before = source.text;
+        const shape = () => JSON.stringify([execFrames, gaps.length].concat(
+            (liveScene.waits !== undefined ? liveScene.waits : []).map((gap) => [Math.round(gap.at * fps), Math.round(gap.d * fps)])));
+        const was = shape(), flaws = source.runFlaws.length;
+        if (!source.insertAfterLine(line, statement))
+            return false;
+        app.executeScene();
+        const failed = execState === "failed", clash = source.runFlaws.length > flaws, moved = shape() !== was;
+        if (failed || clash || moved) {
+            const why = failed ? element.n + " is not free to be told that at " + at
+                      : clash ? "another line already sets " + what + " over those frames"
+                      : "it would push a wait() that follows";
+            app.rewind(before);
+            app.executeScene();
+            source.say(why + " — nothing written");
+            return false;
+        }
+        source.say(what + " reaches " + value + " at " + at + " — line " + (line + 1) + " added");
+        return true;
+    }
+
     function rewind(to) {
         for (let guard = 0; source.text !== to && guard < 4; ++guard)
             source.undo();
@@ -3608,7 +3705,10 @@ ApplicationWindow {
             },
             markers: shownScene.markers.map((m) => ({ name: m.n, at: m.at, line: m.line })),
             sound: Shell.hasAudio ? "ready" : (Shell.audioWhy.length > 0 ? Shell.audioWhy : "none"),
-            elements: shownScene.elements.length
+            elements: shownScene.elements.length,
+            // Said, so a screenshot's rectangles are not read as the scene's.
+            guides: safeMargins,
+            frame: { width: Shell.frameWidth, height: Shell.frameHeight }
         });
 
         switch (verb) {
@@ -4083,6 +4183,12 @@ ApplicationWindow {
         ready: app.execRevision > 0
         onTogglePlay: app.togglePlay()
         onSeek: (seconds) => app.seekTo(seconds)
+        // The frame the scene is made in, so a 1080x1920 one is letterboxed as
+        // one rather than drawn into a 16:9 box.
+        frameWidth: Shell.frameWidth
+        frameHeight: Shell.frameHeight
+        guides: app.safeMargins
+        onToggleGuides: app.toggleSafeMargins()
     }
 
     TimelinePanel {
@@ -4133,6 +4239,7 @@ ApplicationWindow {
         onArgumentWritten: (element, call, name, value) => app.fromInspector(() => app.writeArgument(element, call, name, value))
         onMetadataAdded: (element, write) => app.fromInspector(() => app.addMetadata(element, write))
         onMetadataWritten: (element, call, name, at, value) => app.fromInspector(() => app.writeMetadata(element, call, name, at, value))
+        onKeyed: (element, key, value, frame) => app.fromInspector(() => app.keyAt(element, key, value, frame))
         onJumpRequested: (element) => app.revealLine(element.line)
         onRenamed: (element, name) => app.fromInspector(() => app.renameElement(element, name))
         onSays: (sentence) => source.say(sentence)
@@ -4366,6 +4473,12 @@ ApplicationWindow {
         sequence: Keymap.sequence("zoomFit")
         enabled: app.keyFree("zoomFit")
         onActivated: timeline.zoomToFit()
+    }
+    // ': Premiere's key for the Program Monitor's safe margins.
+    Shortcut {
+        sequence: Keymap.sequence("safeMargins")
+        enabled: app.keyFree("safeMargins")
+        onActivated: app.toggleSafeMargins()
     }
     Shortcut {
         sequence: "Escape"

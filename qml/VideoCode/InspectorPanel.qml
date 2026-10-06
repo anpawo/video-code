@@ -9,8 +9,9 @@
 //
 // Three sections. The line's own arguments, as written; the metadata calls the
 // line adds (position, scale…), one row per field, with what can still be
-// added; and what the element is worth at the playhead, read-only, since a
-// value halfway through an effect is nobody's to type.
+// added; and what the element is worth at the playhead — the stopwatch: a
+// value typed there writes the animation that reaches it at that moment, and
+// is refused while a line is already setting it.
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -110,6 +111,7 @@ Item {
     signal argumentWritten(var element, string call, string name, string value)
     signal metadataAdded(var element, string write)
     signal metadataWritten(var element, string call, string name, int at, string value)
+    signal keyed(var element, string key, string value, int frame)
     signal jumpRequested(var element)
     signal renamed(var element, string name)
     signal says(string sentence)
@@ -266,7 +268,7 @@ Item {
         let out = [];
         for (const [label, key] of order)
             if (root.meta[key] !== undefined)
-                out.push({ label: label, value: Number(root.meta[key]).toFixed(2) });
+                out.push({ label: label, key: key, value: Number(root.meta[key]).toFixed(2) });
         return out;
     }
 
@@ -895,8 +897,9 @@ Item {
                         last: index === root.nowRows.length - 1
                         label: modelData.label
                         value: modelData.value
-                        editable: false
+                        kind: modelData.key === "Opacity" ? "uint8" : "float"
                         faint: true
+                        onCommitted: (text) => root.keyed(root.element, modelData.key, text.trim(), Math.round(root.playhead * 30))
                     }
                 }
             }

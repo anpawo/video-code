@@ -147,12 +147,6 @@ class prop(Generic[_CLASS_T, _ATTR1_T, _ATTR2_T]):
         return self
 
 
-class autoProp(prop[_CLASS_T, _CLASS_T, _CLASS_T]):
-    def __init__(self, func: Callable[[], _CLASS_T], /):
-        super().__init__()
-        self.privateName = f"_{func.__name__}"
-
-
 class propagate(prop[_CLASS_T, _ATTR1_T, _ATTR2_T]):
     """
     Like prop, but also broadcasts the new value down to all children on set.

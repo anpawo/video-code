@@ -5,9 +5,10 @@
 // and the code is the scene. So it gets a permanent column, and what used to live
 // on the right (Properties, Effects) moves to the element you click.
 //
-// Only what it says is shown, not the tools it runs: the check on its work is the
-// diff it leaves in the code pane, and the answer ends on the lines it changed,
-// each a link to its place there.
+// Its steps come first, folded: a grey line per stretch of reasoning and per
+// tool it ran, a tool's line opening on its arguments and its result. Then what
+// it says, and the answer ends on the lines it changed, each a link to its place
+// in the code pane.
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -35,13 +36,19 @@ Item {
     // a finished answer keeps the time it took.
     property double now: 0
 
+    // Whether the newest line is kept in view. Unfolding a step is reading, not
+    // talking: the page stays where it is.
+    property bool follows: true
+
     function append(entry) {
+        root.follows = true;
         const grown = root.log.slice();
         grown.push(entry);
         root.log = grown;
     }
 
     function edit(index, changes) {
+        root.follows = true;
         const grown = root.log.slice();
         grown[index] = Object.assign({}, grown[index], changes);
         root.log = grown;
@@ -53,6 +60,43 @@ Item {
             root.append({ who: "agent", body: [line], started: 0, ended: 0 });
         else
             root.edit(root.turn, { body: root.log[root.turn].body.concat([line]) });
+    }
+
+    function amend(turn, index, changes) {
+        const body = root.log[turn].body.slice();
+        body[index] = Object.assign({}, body[index], changes);
+        root.edit(turn, { body: body });
+    }
+
+    function step(entry) {
+        if (root.turn >= 0)
+            root.edit(root.turn, { body: root.log[root.turn].body.concat([entry]) });
+    }
+
+    // The count arrives several times for one stretch of reasoning, growing:
+    // one line per stretch, not one per count.
+    function think(tokens, text) {
+        if (root.turn < 0)
+            return;
+        const body = root.log[root.turn].body;
+        const last = body.length > 0 ? body[body.length - 1] : null;
+        if (last !== null && last.kind === "thinking")
+            root.amend(root.turn, body.length - 1, { tokens: Math.max(last.tokens, tokens), text: text.length > 0 ? text : last.text });
+        else
+            root.step({ kind: "thinking", tokens: tokens, text: text, open: false });
+    }
+
+    function toolEnd(id, output, failed) {
+        if (root.turn < 0)
+            return;
+        const at = root.log[root.turn].body.findIndex((b) => b.kind === "tool" && b.id === id);
+        if (at >= 0)
+            root.amend(root.turn, at, { output: output, state: failed ? "bad" : "ok" });
+    }
+
+    function toggle(turn, index) {
+        root.amend(turn, index, { open: !root.log[turn].body[index].open });
+        root.follows = false;
     }
 
     // The changes a turn left, from the rows of its diff, one per run of
@@ -142,6 +186,14 @@ Item {
 
         function onSaid(text) { root.say(text); }
 
+        function onThinking(tokens, text) { root.think(tokens, text); }
+
+        function onToolStarted(id, name, summary, input) {
+            root.step({ kind: "tool", id: id, name: name, summary: summary, input: input, output: "", state: "run", open: false });
+        }
+
+        function onToolEnded(id, name, output, failed) { root.toolEnd(id, output, failed); }
+
         function onTurnEnded(cost, error) {
             if (error.length > 0)
                 root.say("— " + error);
@@ -165,7 +217,7 @@ Item {
             width: root.width
             spacing: 20
             // The newest line is the one being read: keep the bottom in view.
-            onHeightChanged: scroll.contentItem.contentY = Math.max(0, height - scroll.height)
+            onHeightChanged: if (root.follows) scroll.contentItem.contentY = Math.max(0, height - scroll.height)
             topPadding: 12
             bottomPadding: 8
             leftPadding: 16
@@ -181,6 +233,7 @@ Item {
                 Item {
                     id: msg
                     required property var modelData
+                    required property int index
                     readonly property bool mine: msg.modelData.who === "me"
                     readonly property real avail: root.width - 32
                     width: avail
@@ -213,24 +266,139 @@ Item {
                         id: answer
                         visible: !msg.mine
                         width: parent.width
-                        spacing: 10
+                        // Steps sit close, like the lines of a list; words keep
+                        // the air they had, as padding above them.
+                        spacing: 4
 
                         Repeater {
                             model: msg.mine ? [] : msg.modelData.body
 
-                            // The agent answers in Markdown.
-                            Text {
+                            Column {
+                                id: part
                                 required property var modelData
+                                required property int index
+                                readonly property bool isTool: modelData.kind === "tool"
+                                readonly property bool isStep: isTool || modelData.kind === "thinking"
+                                // Reasoning the stream withheld has nothing to open on.
+                                readonly property bool opens: isTool || (isStep && modelData.text.length > 0)
                                 width: answer.width
-                                text: modelData.text
-                                textFormat: Text.MarkdownText
-                                color: Theme.ink
-                                font.family: Theme.ui
-                                font.pixelSize: 12
-                                lineHeight: 1.4
-                                wrapMode: Text.WordWrap
-                                onLinkActivated: (link) => root.reveal(link)
-                                HoverHandler { cursorShape: parent.hoveredLink.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                                spacing: 4
+
+                                // The agent answers in Markdown.
+                                Text {
+                                    visible: !part.isStep
+                                    width: parent.width
+                                    topPadding: part.index > 0 ? 6 : 0
+                                    text: part.isStep ? "" : part.modelData.text
+                                    textFormat: Text.MarkdownText
+                                    color: Theme.ink
+                                    font.family: Theme.ui
+                                    font.pixelSize: 12
+                                    lineHeight: 1.4
+                                    wrapMode: Text.WordWrap
+                                    onLinkActivated: (link) => root.reveal(link)
+                                    HoverHandler { cursorShape: parent.hoveredLink.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                                }
+
+                                Item {
+                                    id: fold
+                                    visible: part.isStep
+                                    width: parent.width
+                                    height: 16
+
+                                    Text {
+                                        id: chevron
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 12
+                                        text: !part.opens ? "" : part.modelData.open ? "▾" : "▸"
+                                        color: Theme.inkFaint
+                                        font.family: Theme.ui
+                                        font.pixelSize: 13
+                                    }
+                                    Text {
+                                        id: name
+                                        anchors { left: chevron.right; verticalCenter: parent.verticalCenter }
+                                        text: part.isTool ? part.modelData.name
+                                            : !part.isStep ? ""
+                                            : (msg.modelData.ended === 0 && part.index === msg.modelData.body.length - 1 ? "Thinking" : "Thought")
+                                              + (part.modelData.tokens > 0 ? " · " + part.modelData.tokens + " tokens" : "")
+                                        color: Theme.inkDim
+                                        font.family: Theme.ui
+                                        font.pixelSize: 11
+                                        font.italic: !part.isTool
+                                    }
+                                    Text {
+                                        id: mark
+                                        visible: part.isTool
+                                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                        text: !part.isTool ? "" : part.modelData.state === "ok" ? "✓" : part.modelData.state === "bad" ? "✗" : "…"
+                                        color: !part.isTool ? Theme.inkFaint : part.modelData.state === "ok" ? Theme.ok
+                                             : part.modelData.state === "bad" ? Theme.bad : Theme.inkFaint
+                                        font.family: Theme.ui
+                                        font.pixelSize: 11
+                                    }
+                                    Text {
+                                        visible: part.isTool
+                                        anchors { left: name.right; leftMargin: 8; right: mark.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                                        text: part.isTool && part.modelData.summary !== part.modelData.name ? part.modelData.summary.split("\n")[0] : ""
+                                        // A path is told apart by its end, a command by its start.
+                                        elide: text.startsWith("/") ? Text.ElideLeft : Text.ElideRight
+                                        color: Theme.inkFaint
+                                        font.family: Theme.mono
+                                        font.pixelSize: 10
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: part.opens
+                                        cursorShape: part.opens ? Qt.PointingHandCursor : undefined
+                                        onClicked: root.toggle(msg.index, part.index)
+                                    }
+                                }
+
+                                Rectangle {
+                                    visible: part.opens && part.modelData.open
+                                    x: 12
+                                    width: parent.width - 12
+                                    height: unfolded.implicitHeight + 16
+                                    radius: 6
+                                    color: Theme.sunk
+                                    border.width: 1
+                                    border.color: Theme.edgeSoft
+
+                                    Column {
+                                        id: unfolded
+                                        x: 10
+                                        y: 8
+                                        width: parent.width - 20
+                                        spacing: 8
+
+                                        Text {
+                                            width: parent.width
+                                            text: !part.isStep ? "" : part.isTool ? part.modelData.input : part.modelData.text
+                                            color: Theme.inkDim
+                                            font.family: part.isTool ? Theme.mono : Theme.ui
+                                            font.pixelSize: part.isTool ? 10 : 11
+                                            font.italic: !part.isTool
+                                            wrapMode: Text.WrapAnywhere
+                                        }
+                                        Rectangle {
+                                            visible: result.visible
+                                            width: parent.width
+                                            height: 1
+                                            color: Theme.edgeSoft
+                                        }
+                                        Text {
+                                            id: result
+                                            visible: part.isTool && part.modelData.state !== "run"
+                                            width: parent.width
+                                            text: !part.isTool ? "" : part.modelData.output.length > 0 ? part.modelData.output : "(nothing)"
+                                            color: part.isTool && part.modelData.state === "bad" ? Theme.bad : Theme.inkDim
+                                            font.family: Theme.mono
+                                            font.pixelSize: 10
+                                            wrapMode: Text.WrapAnywhere
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -239,6 +407,7 @@ Item {
                         Row {
                             id: dots
                             visible: msg.modelData.started > 0 && msg.modelData.ended === 0
+                            topPadding: 6
                             spacing: 5
                             property int phase: 0
                             Timer {
@@ -261,6 +430,7 @@ Item {
 
                         Text {
                             visible: msg.modelData.ended > 0
+                            topPadding: 6
                             text: msg.modelData.ended > 0 ? root.elapsed(msg.modelData) : ""
                             color: Theme.inkFaint
                             font.family: Theme.mono
@@ -364,8 +534,8 @@ Item {
         if (text.length === 0 || Agent.busy)
             return;
         root.append({ who: "me", body: [{ kind: "text", text: text }] });
-        // The answer's block opens before a word of it: with the tools
-        // hidden, its dots are what say the agent is working.
+        // The answer's block opens before a word of it: until a first step
+        // arrives, its dots are what say the agent is working.
         root.now = Date.now();
         root.append({ who: "agent", body: [], started: root.now, ended: 0 });
         root.turn = root.log.length - 1;

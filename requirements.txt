@@ -12,3 +12,6 @@ basedpyright
 opencv-python  # optional: only needed for Video.track() (motion tracking)
 numpy  # optional: only needed for Sound.beats() (onset/beat detection)
 faster-whisper  # optional: only needed for Sound.transcribe() (speech-to-text auto-captions)
+# faster-whisper 1.2.1 still passes metadata_errors to av.open, which PyAV 19
+# removed. This line goes once a faster-whisper release no longer passes it.
+av<19

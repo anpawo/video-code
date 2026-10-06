@@ -1817,6 +1817,12 @@ Item {
             // the obvious 8: a number and a letter that nearly touch read as one
             // word, and every editor leaves a hand's breadth there.
             leftPadding: 14
+            // Half a pane past the end of the longest line: its last characters
+            // are read with air after them, and what a gesture says after a
+            // line has somewhere to be seen. Padding, unlike the room under
+            // the text: sideways it breaks nothing, and a press out there
+            // still lands on the end of its line.
+            rightPadding: view.width / 2
             topPadding: 6
             // Code is not prose: a wrapped line lies about where the line ends,
             // and every editor a person has used before this one scrolls instead.
@@ -1850,7 +1856,7 @@ Item {
                     z: -1
                     x: 0
                     y: editor.topPadding + touched.index * gutter.lineHeight
-                    width: Math.max(view.width, editor.contentWidth)
+                    width: editor.width
                     height: gutter.lineHeight
                     visible: touched.modelData.kind !== "same"
                     // Tinted rather than solid: a full-strength green under
@@ -1874,7 +1880,7 @@ Item {
                     readonly property rect tail: editor.positionToRectangle(root.offsetOf(modelData.line - 1, modelData.to))
                     z: -1
                     y: editor.topPadding + (modelData.line - 1) * gutter.lineHeight
-                    width: Math.max(view.width, editor.contentWidth)
+                    width: editor.width
                     height: gutter.lineHeight
                     color: Qt.alpha(modelData.refused ? Theme.bad : Theme.live, 0.13)
 
@@ -1902,7 +1908,7 @@ Item {
                     readonly property rect end: editor.positionToRectangle(root.offsetOf(modelData.line - 1, 1e6))
                     z: 1
                     y: editor.topPadding + (modelData.line - 1) * gutter.lineHeight
-                    width: Math.max(view.width, editor.contentWidth)
+                    width: editor.width
                     height: gutter.lineHeight
 
                     Rectangle {
@@ -1961,7 +1967,7 @@ Item {
                 z: -1
                 x: 0
                 y: editor.cursorRectangle.y
-                width: Math.max(view.width, editor.contentWidth)
+                width: editor.width
                 height: editor.cursorRectangle.height
                 color: Theme.codeSkin.band
                 visible: editor.activeFocus
@@ -1976,7 +1982,7 @@ Item {
                 z: -1
                 x: 0
                 y: at.y
-                width: Math.max(view.width, editor.contentWidth)
+                width: editor.width
                 height: at.height
                 color: Theme.hover
                 visible: probe.containsMouse && probe.mouseY <= editor.topPadding + editor.contentHeight

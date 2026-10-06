@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""A stand-in for `claude -p --output-format stream-json`: one canned turn per question.
+
+The events are the ones a real turn sent on 2 Oct. 2026, shortened: thinking that
+arrives as a token count and an empty block, two reads answered out of order with
+one failing, and an answer a terminal hook has coloured and padded.
+"""
+import json
+import sys
+
+
+def out(event):
+    print(json.dumps(event), flush=True)
+
+
+def assistant(block):
+    out({"type": "assistant", "message": {"content": [block]}})
+
+
+def result(tool, text, failed=False):
+    out({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tool, "content": text, "is_error": failed}]}})
+
+
+for _ in sys.stdin:
+    out({"type": "system", "subtype": "init", "session_id": "stand-in"})
+    out({"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 50, "estimated_tokens_delta": 50})
+    out({"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 211, "estimated_tokens_delta": 161})
+    assistant({"type": "thinking", "thinking": "", "signature": "x"})
+    assistant({"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": "/scene/a.py", "limit": 40}})
+    assistant({"type": "tool_use", "id": "t2", "name": "Read", "input": {"file_path": "/scene/b.py"}})
+    result("t2", "File does not exist.", failed=True)
+    result("t1", "1\tfrom videocode import *\n2\t")
+    assistant({"type": "text", "text": "\x1b[48;2;214;245;214m⟶ Fait." + "\xa0" * 40 + "\x1b[0m\n\n- `a.py` read."})
+    out({"type": "result", "subtype": "success", "total_cost_usd": 0.01})

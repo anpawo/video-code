@@ -2,6 +2,7 @@
 # Redraws the logo's rasters from assets/logo/videocode.svg, which is the source:
 #
 #   assets/logo/videocode.png                     the mark alone
+#   logo.png                                      the mark alone at 150 px — what the README's example scene shows
 #   assets/logo/icon.png                          the mark on a night disc — the window icon off macOS
 #   Video-Code.app/Contents/Resources/icon.icns   the mark on a full night square: macOS masks a
 #                                                 square to its own shape, and puts a disc on a grey plate
@@ -27,11 +28,11 @@ switch args[3] {
 case "disc":
     night.setFill()
     NSBezierPath(ovalIn: full.insetBy(dx: 100, dy: 100)).fill()
-    side = 600
+    side = 528
 case "square":
     night.setFill()
     full.fill()
-    side = 760
+    side = 669
 default: break
 }
 mark.draw(in: NSRect(x: (CGFloat(size) - side) / 2, y: (CGFloat(size) - side) / 2, width: side, height: side))
@@ -40,6 +41,7 @@ try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWith
 SWIFT
 
 swift "$tmp/render.swift" assets/logo/videocode.svg assets/logo/videocode.png plain
+sips -z 150 150 assets/logo/videocode.png --out logo.png > /dev/null
 swift "$tmp/render.swift" assets/logo/videocode.svg assets/logo/icon.png disc
 swift "$tmp/render.swift" assets/logo/videocode.svg "$tmp/square.png" square
 

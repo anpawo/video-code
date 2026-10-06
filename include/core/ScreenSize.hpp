@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "core/Config.hpp"
@@ -22,6 +23,19 @@ namespace argparse
 
 namespace VC
 {
+    ///< A frame --for knows by the place it is watched: "tiktok", 1080x1920.
+    struct NamedShape
+    {
+        std::string name;
+        float       width;
+        float       height;
+    };
+
+    ///< The shapes --for names, in the order asked; empty without --for. An
+    ///< unknown name exits with the list of known ones. Shared by the renders
+    ///< (makeConfigs) and --lint, which checks the scene in each frame.
+    std::vector<NamedShape> shapesFor(const argparse::ArgumentParser &parser);
+
     ///< Build the render Config. The resolution comes from --width/--height
     ///< (1920x1080 by default) and from nothing else — a scene cannot change
     ///< it, so the world box, the preview surface and the encoder agree by

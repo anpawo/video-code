@@ -89,7 +89,11 @@ QtObject {
           says: ["An export with a range renders only that stretch."] },
         { id: "markOut",     label: "Mark out",           where: "Transport", only: "outside the code pane" },
         { id: "clearMarks",  label: "Clear the range",    where: "Transport", only: "outside the code pane" },
-        { id: "zoomFit",     label: "Zoom to fit",        where: "Timeline",  only: "outside the code pane" }
+        { id: "zoomFit",     label: "Zoom to fit",        where: "Timeline",  only: "outside the code pane" },
+        // Premiere's key for the same overlay. Bare, so a caret in the code
+        // pane keeps it: an apostrophe is something a scene is written with.
+        { id: "safeMargins", label: "Safe margins",       where: "Transport", only: "outside the code pane",
+          says: ["Action safe 90 %, title safe 80 %; on 9:16, what TikTok, Reels and Shorts cover."] }
     ]
 
     // What the system owns. Listed so the board is honest about which keys are
@@ -131,6 +135,7 @@ QtObject {
         "markOut":    "O",
         "clearMarks": "Shift+X",
         "zoomFit":    "Shift+Z",
+        "safeMargins": "'",
         "redo":       "Cmd+Y",
         "moveUp":     "Cmd+↑",
         "moveDown":   "Cmd+↓",
