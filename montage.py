@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 
 #
-# montage.py — le montage de la PARTIE (bobine 2), banc d'essai.
+# montage.py — the montage of the GAME (reel 2), test bench.
 #
-# chess_montage.py nomme les effets un par un ; ici on s'en sert pour de vrai :
-# on prend une fenetre de la partie et on pose dessus quelques mouvements de
-# camera — poussees, zooms sur un coup, travellings. Rien d'autre pour le
-# moment, le but est de voir si le rythme tient.
+# chess_montage.py names the effects one by one; here they are used for real:
+# we take a window of the game and lay a few camera moves over it — pushes,
+# zooms on a chess move, travellings. Nothing else for now, the goal is to see
+# whether the rhythm holds.
 #
-#   # ouvrir dans l'UI :
+#   # open in the UI:
 #   MONTAGE_SOURCE=~/Desktop/Projets/Evolvia/first_test.mov \
 #   ./video-code --editor --file montage.py
 #
-#   # sortir le fichier, a la taille et au fps de la source :
+#   # write the file, at the size and fps of the source:
 #   MONTAGE_SOURCE=~/Desktop/Projets/Evolvia/first_test.mov \
 #   ./video-code --file montage.py --generate /tmp/montage.mp4 \
 #                --width 1322 --height 1526 --framerate 60
 #
-# Dans les deux cas il FAUT exporter PYTHONPATH avant, l'interpreteur embarque
-# ignore le PATH :
+# In both cases PYTHONPATH MUST be exported first, the embedded interpreter
+# ignores the PATH:
 #   export PYTHONPATH="$PWD/.venv/lib/python3.14/site-packages"
 #
 
@@ -33,23 +33,23 @@ from videocode.utils.probe import probeVideo
 
 SOURCE = os.path.expanduser(os.environ.get("MONTAGE_SOURCE", "~/Desktop/Projets/Evolvia/first_test.mov"))
 
-START_AT = 118.0        # ou on entre dans la partie, en secondes de source
-REEL = 18.0             # duree de la bobine, en secondes de scene
-BORDER = 26             # marquise d'enregistrement macOS, en pixels de chaque bord
+START_AT = 118.0        # where we enter the game, in seconds of source
+REEL = 18.0             # duration of the reel, in seconds of scene
+BORDER = 26             # macOS recording marquee, in pixels on each edge
 
 
-# --- la source --------------------------------------------------------------
+# --- the source -------------------------------------------------------------
 #
-# Sonder, tenir dans le cadre et jeter une frame sur deux sont des outils de la
-# librairie (probeVideo, containSize, decimate) : ce fichier ne garde que ce qui
-# est propre a CETTE partie.
+# Probing, fitting the frame and dropping every other frame are tools of the
+# library (probeVideo, containSize, decimate): this file only keeps what is
+# specific to THIS game.
 
 sourceWidth, sourceHeight, sourceFps = probeVideo(SOURCE)
 
-# La marquise macOS est incrustee dans les pixels : on cadre la zone UTILE et
-# on met tout le media a l'echelle pour que les bords sortent du cadre. C'est
-# la GEOMETRIE qui le fait, pas le shader `crop` — il n'y a qu'un recadrage par
-# image et par input, et on garde ce canal libre pour les effets.
+# The macOS marquee is burned into the pixels: we frame the USABLE area and
+# scale the whole media so that the edges fall outside the frame. The GEOMETRY
+# does it, not the `crop` shader — there is only one crop per frame and per
+# input, and we keep that channel free for the effects.
 usableWidth = sourceWidth - 2 * BORDER
 usableHeight = sourceHeight - 2 * BORDER
 keep = containSize(usableWidth, usableHeight)
@@ -57,8 +57,8 @@ keepWidth, keepHeight = keep.x, keep.y
 clipWidth = keepWidth * sourceWidth / usableWidth
 clipHeight = keepHeight * sourceHeight / usableHeight
 
-# En "contain", ce qui n'est pas couvert reste transparent : un fond noir plein
-# cadre dessous pour que ce soit des BANDES NOIRES et pas un trou.
+# In "contain", what is not covered stays transparent: a full-frame black
+# background underneath so that they are BLACK BARS and not a hole.
 backdrop = Rectangle(
     width=WORLD_WIDTH, height=WORLD_HEIGHT,
     fillColor=BLACK, strokeColor=TRANSPARENT,
@@ -66,7 +66,7 @@ backdrop = Rectangle(
 backdrop.position(0, 0).zIndex(-1)
 
 sceneFrames = round(REEL * FRAMERATE)
-ratio = sourceFps / FRAMERATE          # 2.0 pour une source a 60 fps
+ratio = sourceFps / FRAMERATE          # 2.0 for a 60 fps source
 firstFrame = int(START_AT * sourceFps)
 
 clip = Video(
@@ -80,24 +80,24 @@ clip = Video(
 clip.position(0, 0).zIndex(0)
 
 
-# --- ou viser ---------------------------------------------------------------
+# --- where to aim -----------------------------------------------------------
 #
-# videocode ne connait pas les echecs, et c'est voulu : les effets de camera
-# prennent des FRACTIONS de la boite du media. Traduire "d8" en fraction est le
-# boulot de CE fichier, pas celui de la librairie.
+# videocode knows nothing about chess, and that is deliberate: the camera
+# effects take FRACTIONS of the media box. Turning "d8" into a fraction is the
+# job of THIS file, not of the library.
 #
-# Mesure faite une fois sur une image de la source (1322x1526) : le plateau va
-# de x=24 a x=1304 et de y=124 a y=1400, soit huit cases de 160 px.
+# Measured once on a frame of the source (1322x1526): the board runs from x=24
+# to x=1304 and from y=124 to y=1400, that is eight squares of 160 px.
 BOARD_X, BOARD_Y, SQUARE = 24.0, 124.0, 160.0
 FILES = "abcdefgh"
 
 
 def square(name: str) -> tuple[float, float]:
     """
-    Le centre d'une case, en fractions du media — "d8" -> (0.460, 0.134).
+    The centre of a square, in fractions of the media — "d8" -> (0.460, 0.134).
 
-    Le plateau est vu du cote des blancs : la rangee 8 est en haut, donc la
-    rangee n occupe la ligne (8 - n) en partant du haut.
+    The board is seen from White's side: rank 8 is at the top, so rank n is on
+    row (8 - n) counting from the top.
     """
     file = FILES.index(name[0])
     rank = int(name[1:])
@@ -106,58 +106,59 @@ def square(name: str) -> tuple[float, float]:
     return x / sourceWidth, y / sourceHeight
 
 
-# --- la bobine --------------------------------------------------------------
+# --- the reel ---------------------------------------------------------------
 #
-# Les instants sont cales sur de VRAIS coups de la partie, releves sur la
-# source (frame ou les deux cases changent), et ramenes a l'horloge du film :
-#   film = (source - START_AT). Coups utilises, en secondes de film :
-#     2.84  la dame blanche traverse la colonne d et prend en d8
-#     5.84  la tour noire reprend en d8
-#    14.17  le pion c2 avance en c4
-#    16.51  le fou noir sort en c5
+# The instants are set on REAL moves of the game, read off the source (the
+# frame where both squares change), and brought back to the film's clock:
+#   film = (source - START_AT). Chess moves used, in seconds of film:
+#     2.84  the white queen crosses the d-file and captures on d8
+#     5.84  the black rook recaptures on d8
+#    14.17  the c2 pawn advances to c4
+#    16.51  the black bishop comes out to c5
 #
-# Chaque mouvement arrive un poil AVANT son coup, pour que la camera soit deja
-# en place quand la piece bouge — l'inverse donne l'impression de courir apres.
+# Each camera move arrives a touch BEFORE its chess move, so that the camera is
+# already in place when the piece moves — the other way round feels like
+# chasing it.
 d8 = square("d8")
 c4 = square("c4")
 c5 = square("c5")
 a1 = square("a1")
 h8 = square("h8")
 
-# (at, effet, faut-il recadrer derriere)
+# (at, effect, whether to reframe afterwards)
 moves = [
-    # Une poussee lente d'entree : la camera n'est jamais fixe, meme quand il
-    # ne se passe rien encore.
+    # A slow opening push: the camera is never still, even while nothing is
+    # happening yet.
     (0.0, punchIn(zoom=1.12, duration=2.3), True),
 
-    # La prise de dame : un coup sec, donc snapZoom — il monte vite, tient, et
-    # revient tout seul (pas de recadrage derriere, il le fait lui-meme).
+    # The queen capture: a sharp move, hence snapZoom — it rises fast, holds,
+    # and comes back by itself (no reframe afterwards, it does it itself).
     (2.5, snapZoom(x=d8[0], y=d8[1], zoom=2.1, hold=0.9, attack=0.12, release=0.4), False),
 
-    # La reprise, sur la meme case : cette fois une arrivee posee, pour la
-    # difference de ton entre les deux coups.
+    # The recapture, on the same square: this time a settled arrival, for the
+    # difference in tone between the two moves.
     (5.2, zoomTo(x=d8[0], y=d8[1], zoom=1.9, duration=0.9), True),
 
-    # Le grand balayage du plateau, coin a coin, pendant qu'il ne se passe
-    # rien de decisif : ca occupe le temps mort sans le montrer.
+    # The wide sweep of the board, corner to corner, while nothing decisive is
+    # happening: it fills the dead time without showing it.
     (7.4, travelling(fromX=a1[0], fromY=a1[1], toX=h8[0], toY=h8[1],
                      zoom=1.5, duration=4.2), True),
 
-    # Respiration : on revient large et on repousse doucement.
+    # A breath: back to wide, then a gentle push again.
     (12.0, punchIn(zoom=1.1, duration=1.8), True),
 
-    # Le pion c2-c4.
+    # The c2-c4 pawn.
     (14.0, zoomTo(x=c4[0], y=c4[1], zoom=2.0, duration=0.8), True),
 
-    # Le fou qui sort en c5 : un petit deplacement de camera d'une case a
-    # l'autre plutot qu'une coupe.
+    # The bishop coming out to c5: a small camera move from one square to the
+    # other rather than a cut.
     (16.0, travelling(fromX=c4[0], fromY=c4[1], toX=c5[0], toY=c5[1],
                       zoom=1.8, duration=1.4), True),
 ]
 
-# Les `at=` doivent etre croissants : l'horloge du film refuse d'ecrire dans le
-# passe d'un element. La liste ci-dessus est deja dans l'ordre, et chaque
-# recadrage se glisse juste avant le mouvement suivant.
+# The `at=` values must be increasing: the film's clock refuses to write in an
+# element's past. The list above is already in order, and each reframe slips
+# in just before the next camera move.
 for index, (at, effect, needsReframe) in enumerate(moves):
     clip.apply(effect, at=at)
     if needsReframe:
