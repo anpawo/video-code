@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791292454252,
+  "lastUpdate": 1791293601731,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -790,6 +790,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/37cf335e27cc8514593701f380c17cec4ad98cd1"
         },
         "date": 1791292453523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "112256146+anpawo@users.noreply.github.com",
+            "name": "anpawo",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac080a471222d7933fd1ef1267b3f4376cc8adda",
+          "message": "Merge pull request #377 from anpawo/claude/audit-runedata\n\naudit: league/runes.py drops its unused RuneData class",
+          "timestamp": "2026-10-06T15:31:58+02:00",
+          "tree_id": "a1bf4266d2ce5c1750b1d56b14c660d279070589",
+          "url": "https://github.com/anpawo/video-code/commit/ac080a471222d7933fd1ef1267b3f4376cc8adda"
+        },
+        "date": 1791293601334,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
