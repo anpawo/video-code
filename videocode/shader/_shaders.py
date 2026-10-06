@@ -39,6 +39,7 @@ from videocode.shader.fragmentShader.saturation import *
 from videocode.shader.fragmentShader.sepia import *
 from videocode.shader.fragmentShader.sharpen import *
 from videocode.shader.fragmentShader.silk import *
+from videocode.shader.fragmentShader.spotlight import *
 from videocode.shader.fragmentShader.starNest import *
 from videocode.shader.fragmentShader.temperature import *
 from videocode.shader.fragmentShader.vhs import *

@@ -40,6 +40,7 @@ using json = nlohmann::json;
     X(Halftone)            \
     X(ChromaKey)           \
     X(Lut)                 \
+    X(Spotlight)           \
     X(Saturation)          \
     X(Temperature)         \
     X(ChromaticAberration) \
