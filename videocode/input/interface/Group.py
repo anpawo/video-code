@@ -438,6 +438,10 @@ class Group(Interface, Generic[_GROUP_T]):
         if len(self.inputs) != len(self._memberBases):
             self._snapshot()
 
+        # `at=` never reached a rigid transform: `Group(a, b).scaleTo(1.1, at=5)`
+        # landed on the members' cursor, where a plain shape lands on second 5.
+        offset, at = self._when(at, offset), None
+
         # Members at DIFFERENT cursors are not at the same instant, and a rigid
         # transform is only rigid if they are: `a.fadeIn(); a.flush()` then
         # `Group(a, b).moveBy(x=5)` moved `a` over frames 30-59 and `b` over 0-29,
