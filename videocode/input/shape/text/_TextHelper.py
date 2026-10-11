@@ -339,6 +339,7 @@ def buildLetterData(
     bold: bool,
     italic: bool,
     runs: maybe[tuple[run, ...]] = None,
+    letterSpacing: float = 0.0,
 ) -> list[tuple[str, float, float, runStyle]]:
     """
     Returns (char, x_offset, y_offset, style) for each rendered glyph.
@@ -388,7 +389,7 @@ def buildLetterData(
                     verts = [(x * scale, y * scale) for x, y in cached]
                     char = line[info.cluster] if info.cluster < len(line) else ""
                     result.append((char, xOff + min(v[0] for v in verts), yOff + min(v[1] for v in verts), st))
-                cx += pos.x_advance * scale
+                cx += pos.x_advance * scale + letterSpacing * fontSize
 
         lineStart += len(rawLine) + 1
 

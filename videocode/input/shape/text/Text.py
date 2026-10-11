@@ -56,8 +56,12 @@ class Text(Group[Letter], _hasFillStroke):
         strokeWidth: wufloat = 0,
         bold: bool = False,
         italic: bool = False,
+        letterSpacing: float = 0,
     ):
         """
+        `letterSpacing` is added after every letter, in fontSizes — CSS's
+        letter-spacing, After Effects' tracking.
+
         `fillColor` may be a fragment shader instead of a color — the glyphs
         are then FILLED BY THE SHADER, one continuous pattern spread across
         the whole word:
@@ -88,6 +92,7 @@ class Text(Group[Letter], _hasFillStroke):
         self.strokeWidth = strokeWidth
         self.bold = bold
         self.italic = italic
+        self.letterSpacing = letterSpacing
 
         if isinstance(fillColor, PaintShader):
             # Lazy import: CompoundPolygon star-imports videocode, so a
@@ -97,7 +102,7 @@ class Text(Group[Letter], _hasFillStroke):
             # The glyphs are never drawn themselves — they only exist merged
             # into the matte source — so they must not register as inputs.
             with Context.noRegister():
-                letters = Text(text, fontSize, fontFamily, WHITE, strokeColor, strokeWidth, bold, italic).inputs
+                letters = Text(text, fontSize, fontFamily, WHITE, strokeColor, strokeWidth, bold, italic, letterSpacing).inputs
             word = CompoundPolygon(*letters)
 
             # The canvas' fillColor IS the shader — Polygon's shader-fill
@@ -163,7 +168,7 @@ class Text(Group[Letter], _hasFillStroke):
                 setattr(l, attr, color)
             return
 
-        data = _helper.buildLetterData(self.text, self.fontSize, self.fontFamily, self.bold, self.italic, runs=self._runs)
+        data = _helper.buildLetterData(self.text, self.fontSize, self.fontFamily, self.bold, self.italic, runs=self._runs, letterSpacing=self.letterSpacing)
 
         angleRad = math.radians(color.angle)
         dx, dy = math.cos(angleRad), math.sin(angleRad)
@@ -328,6 +333,7 @@ class Text(Group[Letter], _hasFillStroke):
             bold=self.bold,
             italic=self.italic,
             runs=self._runs,
+            letterSpacing=self.letterSpacing,
         )
 
         xMin = min(0.0, min(x for _, x, _, _s in data))
@@ -378,6 +384,10 @@ class Text(Group[Letter], _hasFillStroke):
     def bold() -> bool: ...
     @propagate(after=alignLetters)
     def italic() -> bool: ...
+    @prop(onSet=alignLetters)
+    def letterSpacing() -> float:
+        """Added after every letter, in fontSizes — CSS's letter-spacing, After Effects' tracking."""
+        ...
 
     @property
     def width(self) -> wunumber:
@@ -411,6 +421,7 @@ class Text(Group[Letter], _hasFillStroke):
         inst.strokeWidth = src.strokeWidth
         inst.bold = src.bold
         inst.italic = src.italic
+        inst.letterSpacing = src.letterSpacing
         inst.inputs = letters
         inst._snapshot()
         # Anchor group position at the leftmost letter; adjust member bases to stay relative.
