@@ -54,7 +54,7 @@ from rounding).
 | Class | File | What it is |
 |---|---|---|
 | `Letter(char, font, fontSize, ...)` | `Letter.py` | A single glyph outline as a `Polygon` (FreeType + HarfBuzz). Multi-contour glyphs (holes, e.g. "o") handled via earcut-with-holes. |
-| `Text(text, fontSize, fontFamily, fillColor, strokeColor, strokeWidth, bold, italic)` | `Text.py` | A line of text — `Group[Offset[Letter]]`, each letter individually positioned |
+| `Text(text, fontSize, fontFamily, fillColor, strokeColor, strokeWidth, bold, italic, letterSpacing)` | `Text.py` | A line of text — `Group[Offset[Letter]]`, each letter individually positioned. `letterSpacing` is added after every letter, in fontSizes (CSS letter-spacing, After Effects tracking) |
 | `MarkupText(markup, fontSize, fontFamily, fillColor, strokeColor, strokeWidth, bold, italic)` | `Text.py` | A `Text` whose style changes INSIDE the line: `<b>`, `<i>`, `<font color="#hex">`/`<span color=…>` style the run they wrap, each run shaped with its own face so a bold word advances by bold widths. Every other tag (`<u>`, a subtitle's `{\an8}`, an unknown name) is stripped, never drawn. `.text` is the plain text, so `find()`/`typeIn()`/`anchor`/gradients are unchanged, and assigning `.fillColor` still overrides every run. See `_TextHelper.py` for `parseMarkup()`. Kerning across a run boundary is lost. |
 | `bold | "x"`, `italic | "x"`, `colored(rgba) | "x"` | `Text.py` | The tags of a `MarkupText` written for you, so a line composes inside an f-string: `MarkupText(f"a {bold | 'subtitle'} can be {italic | 'styled'} {colored(RED_B) | 'on fire'}")`. `bold("x")` says the same; styles chain (`bold | italic | "x"`); a `<` or `&` in the wrapped text is escaped and reaches the letters. `bold | "x" | italic` (wrong order) is a `TypeError`. |
 | `Markdown(filepath, fontSize, fillColor, strokeColor, strokeWidth, x, y, lineSpacing)` | `Markdown.py` | Renders a `.md` file as a stack of `MarkupText` blocks. v1: `#`...`######` headings (size-scaled), `- `/`* ` bullets (rendered "• "), whole-line `**bold**`/`*italic*`, plain paragraphs — plus inline `**bold**`/`*italic*` mixed within a line. See `_MarkdownHelper.py` for `parseMarkdown()`. |
@@ -214,6 +214,23 @@ is loaded through the same `_SVGHelper`/`SVGPath`/`Offset`/`Group` pipeline as
 | `SplitView(ratio, split, marginX, marginY, padding, ...)` / `Panel` | `SplitView.py` | Two panels dividing the frame — see below |
 | `Row(*inputs, gap, align)` / `Column(*inputs, gap, align)` | `Layout.py` | Inputs side by side / stacked, `gap` measured **edge to edge**, centred on the group — see below |
 | `Grid(*inputs, cols, gap, rowGap, colGap)` | `Layout.py` | Inputs in reading order over `cols` columns, each column as wide as its widest member, each row as tall as its tallest |
+| `Splash(filepath, height)` | `RunePage.py` | Full-frame art behind everything, pushing in slowly for as long as it is on screen. |
+| `Shade(color)` | `RunePage.py` | A dark scrim over the art, heavier at the foot and on the right, so text reads on it. |
+| `Tint(color, width, height, strength)` | `RunePage.py` | A soft pool of colour behind a column, fading to nothing before its edge. |
+| `LaneTag(text, color, fontSize)` | `RunePage.py` | A short rule then a wide-tracked gold label: the tag over a title, sliding in from the left. |
+| `ChampionName(text, fontSize, fillColor)` | `RunePage.py` | A big serif title whose letters rise into place one after the other. |
+| `ChampionTitle(text, fontSize, fillColor)` | `RunePage.py` | The champion's epithet under the name: gold, wide-tracked capitals that fade in. |
+| `PatchLine(text, fontSize, fillColor)` | `RunePage.py` | A small grey line of context under a title: what this is, and for which patch. |
+| `TreeKicker(text, fontSize, fillColor)` | `RunePage.py` | A tiny grey heading over a column: PRIMARY, SECONDARY, SHARDS. |
+| `TreeBadge(filepath, color, size)` | `RunePage.py` | A rune tree's emblem in a dark disc ringed in the tree's colour, popping in. |
+| `TreeName(text, fillColor, fontSize)` | `RunePage.py` | A rune tree's name in the tree's colour, sliding in from the left. |
+| `Rail(length, color, width)` | `RunePage.py` | A thin line that grows down a column, stop by stop, tying its rows together. |
+| `RailNode(color, size)` | `RunePage.py` | A glowing dot on the rail, marking a row that has been decided. |
+| `RuneOption(filepath, size)` | `RunePage.py` | A rune among its row's choices: it swells when it is the pick, and fades back when it is not. |
+| `ShardOption(filepath, size)` | `RunePage.py` | A stat shard in a small ringed disc, picked or passed over like a rune. |
+| `PickRing(size, color, strokeWidth)` | `RunePage.py` | A glowing ring that closes in around the chosen option. |
+| `RuneLabel(text, fillColor, fontSize)` | `RunePage.py` | The name of a picked rune, rising a little as it appears; a keystone's is larger. |
+| `ShardLabel(text, fillColor, fontSize)` | `RunePage.py` | The name of a picked shard: small gold capitals beside its row. |
 
 **Examples**: `test/visual/scenes/shadow.py`, `test/visual/scenes/groups.py`,
 `test/visual/scenes/chess.py` (chessboard built from these primitives).
