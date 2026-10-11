@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791294609862,
+  "lastUpdate": 1791761386051,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -908,6 +908,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/75df963e76b52a48cbe3b8a9826990fcbcecf0e2"
         },
         "date": 1791294609408,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "82a5baa9294a61123a2b07986c3a958d254650af",
+          "message": "library: the rune page, seventeen parts and the page they make (#383)\n\nThe rune video drafted in HyperFrames on 3 Oct. was split into its 17 parts\nso that each could become a template here. They are videocode/template/input/\nRunePage.py, one class each with its own entrance, and the Library's search\nfinds every one by a word of its first docstring line. videos/lol/runes.py\nlays a page out of them from data; locke_runes.py is the original video's\npage. Against the HyperFrames render, over the 300 frames: SSIM 0.977.\ndocs/by-example/features/rune_page.py shows one of each, the repository's\nlogo standing in for the art, which is the game's and is not committed.\n\nCinzel Bold is bundled beside Inter (OFL, its licence beside it): the page's\nserif, cut at weight 700 from the variable font.\n\nA passed-over option fades to 120 where the original fades to 22 %: under a\nfragment shader the opacity lands twice, measured on one icon.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01CRwF75JEc7uUkhpaiT6gbo",
+          "timestamp": "2026-10-12T01:24:53+02:00",
+          "tree_id": "59142a7f123185d23396657c6b1f9e541f338c57",
+          "url": "https://github.com/anpawo/video-code/commit/82a5baa9294a61123a2b07986c3a958d254650af"
+        },
+        "date": 1791761385504,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
