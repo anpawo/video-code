@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791889621261,
+  "lastUpdate": 1791895765981,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1144,6 +1144,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/e48551680a0b69adee9bccd591fca881b6904d14"
         },
         "date": 1791889620284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "56f8406b5f18c88ba09a7eaf39e567ded1b7699b",
+          "message": "board: the French rows wait as a to-do of their own (91, #388)\n\nAbout thirty rows of the board, the page's headings and most of the long\nrecord predate the English rule of 27 Sept. Asked on 13 Oct. to park it as a\nto-do rather than translate it in passing.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01ThWboS6RvmepFrsMFPJ1fU",
+          "timestamp": "2026-10-13T14:47:35+02:00",
+          "tree_id": "860f85fbc0a1b0d4fbffa5b0b1ebd1601addd904",
+          "url": "https://github.com/anpawo/video-code/commit/56f8406b5f18c88ba09a7eaf39e567ded1b7699b"
+        },
+        "date": 1791895764790,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
