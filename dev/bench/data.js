@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791761954803,
+  "lastUpdate": 1791888991340,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1026,6 +1026,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/918f4d4c79ad19ee925bf79562a2a9d316a99c34"
         },
         "date": 1791761954186,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "c8b9e87876c32caf5ea1540a247cdc40188edd13",
+          "message": "library: Hemicycle, a parliament's seats and a vote lit as a wave (#386)\n\nThe picture a vote explainer is built on: every deputy a seat on a half-ring\ncut by aisles, the groups seated left to right as slices, and a group's seats\ncoming on in green or red from its own side of the chamber. A row holds seats\nin proportion to its radius, rounded by largest remainder so the rows add up\nto the chamber exactly; a seat is narrower only where its row's rounding\nleaves it less room. light() takes the number who voted, clear() puts the\nlights back. Manim has no seat chart: its nearest tools are a VGroup of dots\nand LaggedStart.\n\nvideos/politics/assembly.py is the first scene on it, in portrait: a label\npops under the card's corner and the group's seats follow, twice. Its two\nsounds are written out as waves by videos/politics/sfx.py (a pop falling from\n750 to 320 Hz, a rising trill of ticks 20 ms apart), from shapes measured on\na reference Reel, so they end on a decay and are nobody else's recording.\n--set sounds=reel plays the clips cut from that Reel instead; those are not\ncommitted.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01ThWboS6RvmepFrsMFPJ1fU",
+          "timestamp": "2026-10-13T12:52:43+02:00",
+          "tree_id": "1a4ac53edc757820ffb470d508b78ec1b06ff990",
+          "url": "https://github.com/anpawo/video-code/commit/c8b9e87876c32caf5ea1540a247cdc40188edd13"
+        },
+        "date": 1791888990842,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
