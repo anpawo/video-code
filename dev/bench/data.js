@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791888991340,
+  "lastUpdate": 1791889621261,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1085,6 +1085,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/c8b9e87876c32caf5ea1540a247cdc40188edd13"
         },
         "date": 1791888990842,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "e48551680a0b69adee9bccd591fca881b6904d14",
+          "message": "errors: an effect keeps its own clock, apply's start does not move it (#386)\n\nWritten the day it happened: the hemicycle scene's label popped at second 0,\nhidden, and came on whole at its cue. The stills taken after the entrance\nlooked right; the width measured frame by frame did not.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01ThWboS6RvmepFrsMFPJ1fU",
+          "timestamp": "2026-10-13T13:01:50+02:00",
+          "tree_id": "031b9aa8ec12dba792d33c5f5c70b902ec5266c9",
+          "url": "https://github.com/anpawo/video-code/commit/e48551680a0b69adee9bccd591fca881b6904d14"
+        },
+        "date": 1791889620284,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
