@@ -174,17 +174,17 @@
     <span class="chips">
       <span class="chip"><b>86</b> livrés</span>
       <span class="chip"><b>13</b> à faire</span>
-      <span class="chip"><b>92</b> tests</span>
+      <span class="chip"><b>93</b> tests</span>
       <span class="chip"><b>52</b> scènes</span>
     </span>
-    <span class="stamp">12 oct. · 01h</span>
+    <span class="stamp">13 oct. · 13h</span>
   </header>
 
   <div class="board">
 
     <div class="col">
       <div class="card act">
-        <h2>Needs your check <em>une ligne = une chose à faire</em> <span class="n">32</span></h2>
+        <h2>Needs your check <em>une ligne = une chose à faire</em> <span class="n">33</span></h2>
         <ul class="rows">
           <li class="grp">Timeline & clips</li>
           <li class="hot" data-issue="185" data-fix="458e873" data-b="A dragged or stretched clip moves ALONE: the gap after it gives the time back, so nothing after that gap moves, and the clip stops where the gap has nothing left. Hold ⌘ to push everything after it instead. Nothing snaps unless ⇧ is held.¦Why it pushed: a gap starts when the last thing before it has ended. A clip with slack before that moment moves freely; past it, the gap is shortened by what the move cost — measured on the run, not predicted. The writes are one ⌘Z, the left edge with a hide included.¦A gap written as a name (wait(GAP)) cannot give time back: the clip stops there and the code pane says ⌘ pushes instead. test/timeline_drag_test.py drives all of it windowless.¦Yours: does alone-by-default feel right, the stop at the gap&#x27;s end, ⇧ as the snap key, and free numbers like 0.47 in your code."><span class="id">37</span><span class="lbl">A clip moves alone · ⌘ pushes · ⇧ snaps</span><span class="meta lock">458e873 · ta souris</span></li>
@@ -209,6 +209,7 @@
           <li data-issue="172" data-b="File → Export Video… and the transport&#x27;s button export with the terminal&#x27;s binary. ⌘E is gone (8115936): macOS already answers that key.¦Cut an export, export a broken scene."><span class="id">15</span><span class="lbl">Export depuis l'éditeur</span><span class="meta">ta souris</span></li>
           <li data-issue="173" data-b="Un fichier cassé dans templates/ apparaît en rouge avec la raison."><span class="id">16</span><span class="lbl">Tes propres modèles</span><span class="meta">une minute</span></li>
           <li class="hot" data-issue="383" data-b="The 17 parts of the HyperFrames rune video are library templates (videocode/template/input/RunePage.py), each found in the Library by a word of its description; videos/lol/locke_runes.py rebuilds the 10 s video from them — SSIM 0.977 against the original over its 300 frames.¦Watch a-verifier/rune-page-hyperframes-left-videocode-right.mp4: HyperFrames on the left, video-code on the right.¦Text gained letterSpacing (7f86672), a group now lands on at= (5729ccb), Cinzel Bold is bundled beside Inter."><span class="id">86</span><span class="lbl">Rune page: 17 templates from the HyperFrames video</span><span class="meta">82a5baa · ton œil</span></li>
+          <li class="hot" data-issue="386" data-b="Hemicycle is a library template: one seat per deputy on a half-ring cut by aisles, the groups seated left to right, a group&#x27;s seats lit green or red in a wave from its own side, for the number who voted. videos/politics/assembly.py is the first scene on it, in portrait, 4.7 s.¦Watch and listen to a-verifier/assembly-vote-drawn-sounds.mp4 (a pop and a trill written out as waves), then a-verifier/assembly-vote-reel-sounds.mp4 (the two clips cut from the Reel): the wave, the label&#x27;s pop, and which sounds to keep.¦Manim has no seat chart: its nearest tools are a group of dots and a lagged start. The sounds&#x27; starts and endings are measured, not heard."><span class="id">89</span><span class="lbl">Hemicycle: a vote, seat by seat</span><span class="meta">c8b9e87 · eye and ear</span></li>
           <li class="grp">Agent</li>
                     <li class="hot" data-issue="176" data-b="Each tool the agent runs is one folded line — its name, what it was pointed at, ✓ or ✗ — opening on its arguments and its result; its reasoning is a grey line above them, with its token count.¦The reasoning&#x27;s words are not shown: measured on a real turn, the stream sends the thinking block empty and only a count.¦An answer no longer shows the terminal&#x27;s colour codes (fa00dff, #375).¦test/agent_stream_test.py plays a recorded turn through a stand-in claude, windowless.¦Yours: a real question in the Agent pane, then a click on a tool&#x27;s line."><span class="id">23</span><span class="lbl">Agent: its steps before the answer, each tool unfolds</span><span class="meta">91e4c8f · ta souris</span></li>
           <li class="hot" data-issue="178" data-b="When a turn leaves the file changed, its answer ends on the changed lines, one per run: line:column of the first new character and what the line now reads, a removed line said as removed. A click puts the caret there — on the coloured view's line while the turn waits, on the text's once taken.¦test/agent_changes_test.py feeds a known diff, reads the note back and follows a link, windowless.¦Yours: a real turn, then a click on a link."><span class="id">25</span><span class="lbl">Agent: answers with the changed lines, clickable</span><span class="meta">eb1608e · ta souris</span></li>
