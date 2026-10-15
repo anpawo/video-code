@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792071024158,
+  "lastUpdate": 1792072417903,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1675,6 +1675,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/b42a18bfbc2dd4a0855c7e38bdbd0f38d7f8c4a5"
         },
         "date": 1792071023395,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "435bbfe504ccc70be871125e92ca4e6b1bc6795f",
+          "message": "ci: workflow and job names say what they run (#399)\n\nThe Actions tab listed CI, Mirror, Nightly and jobs called \"fast gates\"\nor \"remember\": none said what runs. GitHub has no description key for a\nworkflow, so each one writes a one-line description to its run page\nthrough $GITHUB_STEP_SUMMARY. main is not protected and has no ruleset,\nso no required check matched the old job names.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Bj7KxxnMrCX247AH2mDLBh",
+          "timestamp": "2026-10-15T15:51:22+02:00",
+          "tree_id": "5c8ad5bb3771c11654bd75972ab7f3634d7cd8e3",
+          "url": "https://github.com/anpawo/video-code/commit/435bbfe504ccc70be871125e92ca4e6b1bc6795f"
+        },
+        "date": 1792072415772,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
