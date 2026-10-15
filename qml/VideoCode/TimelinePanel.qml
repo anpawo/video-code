@@ -281,11 +281,8 @@ Item {
     // couple of pixels, which reads as a clip touching the border — the same
     // "cut off" the floor exists to prevent, at the other end of the scale.
     //
-    // It is the slider's `from`, not a clamp laid over the top of it. A clamp
-    // would leave the handle sitting somewhere the picture does not agree with,
-    // and half the slider's travel doing nothing; as the range's start, the
-    // handle means what it shows — the range simply begins where the picture
-    // stops being a sliver.
+    // It is 100 % and what ⇧Z goes to, no longer the slider's `from`: asked on
+    // 15 Oct. to zoom out past it, the slider goes on down to a quarter of it.
     readonly property int minPad: 10
     readonly property real fitWidth: Math.max(0, Math.min(width * 0.95, width - 2 * gutter - 2 * minPad))
     readonly property real fitZoom: span > 0 ? fitWidth / span : 0
@@ -454,11 +451,10 @@ Item {
                 // which left it riding a few pixels above the label beside it.
                 height: 14
                 padding: 0
-                // 25 px per second at the least — or less, down to the whole
-                // scene in the pane, once the scene is too long to fit at 25:
-                // a floor of 25 alone left a two-minute scene showing a third
-                // of itself at the farthest it would go, and ⇧Z short of 100 %.
-                from: root.fitZoom > 0 ? Math.min(25, root.fitZoom) : 25
+                // A quarter of the whole scene in the pane at the farthest: 100 %
+                // filled the pane edge to edge, which still read as a timeline
+                // going on past it. A short scene stops at a quarter of 25 px/s.
+                from: (root.fitZoom > 0 ? Math.min(25, root.fitZoom) : 25) / 4
                 // Twice that at most: five seconds on screen and no further. A
                 // value already past it — saved, or left over from a wider pane —
                 // is pulled back by the Slider itself when the range moves.

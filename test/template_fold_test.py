@@ -123,11 +123,18 @@ try:
     plan = json.loads(probe("JSON.stringify(app.planGesture(liveScene.elements[0], 'body', 1))"))
     check(f"nothing is written onto the call ({plan.get('message')})", plan["ok"] is False and "template" in plan["message"])
 
-    section("the zoom reaches the whole scene")
+    section("the zoom reaches the whole scene, and past it")
     probe("timeline.zoomToFit()")
     zoom, fit = json.loads(probe("JSON.stringify([timeline.pxPerSecond, timeline.fitZoom])"))
     check(f"a 200 s scene fits the pane: {zoom:.2f} px/s for {fit:.2f} — below the 25 the floor used to be",
           fit < 25 and abs(zoom - fit) < 0.01)
+    # The slider rides in the dock's tab strip, not under the timeline: found
+    # as the one holding the timeline's zoom.
+    floor = probe("(function(){ const all = [] ; const walk = (i) => { if (i.visualPosition !== undefined && i.from !== undefined) all.push(i) ;"
+                  " for (const c of i.children) walk(c) } ; walk(app.contentItem) ;"
+                  " return all.find((s) => s.value === timeline.pxPerSecond).from })()")
+    check(f"and the slider goes on down to a quarter of that, the whole scene in a quarter of the pane ({floor:.2f} px/s)",
+          abs(floor - fit / 4) < 0.01)
 
     section("the code pane draws a long line across its whole width")
     try:
