@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792075204028,
+  "lastUpdate": 1792075767978,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1852,6 +1852,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/b09ae881af96bb176ef2d106b4a5ca1b9c877755"
         },
         "date": 1792075203151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "ed6d31faf74f8442e41ca6a499263d065ab95ee8",
+          "message": "test: a template's clip name, for a class, a method and a module (#404)\n\ntest/mutants.py on af63791 (#398) found Context._templateCall half\ntested: no test ran the name of a template written as a class or as a\nmodule, and the two comparisons that tell those apart from a function\ncould be turned round with every test still green. One scene run through\nexecSource, with a function, a class, a method and a module beside it,\nnow holds each to the name it is given.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Bj7KxxnMrCX247AH2mDLBh",
+          "timestamp": "2026-10-15T16:40:07+02:00",
+          "tree_id": "bdff533d84a72e711e48dd0dd46dc2097ad840f1",
+          "url": "https://github.com/anpawo/video-code/commit/ed6d31faf74f8442e41ca6a499263d065ab95ee8"
+        },
+        "date": 1792075767190,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
