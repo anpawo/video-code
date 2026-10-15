@@ -147,6 +147,9 @@ QtObject {
         // Subtitles are derived text, so they borrow the neutral rather than
         // spending a fifth hue on themselves.
         "subs":    "#5d6577",
+        // A template call: the cool teal between video's blue and sound's
+        // green, since it usually holds both.
+        "template": "#2f7f86",
         "live":    "#f0703c",
         "ok":      "#4fbe86"
     })
@@ -167,7 +170,8 @@ QtObject {
         "image":   hue("image"),
         "video":   hue("video"),
         "sound":   hue("sound"),
-        "subs":    hue("subs")
+        "subs":    hue("subs"),
+        "template": hue("template")
     })
 
     // ── The host's complement, for what animates it ──

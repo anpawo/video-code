@@ -22,6 +22,10 @@ Item {
 
     property var element: null
     property string buffer: ""
+    // The file the buffer is: a line of another file is not this buffer's.
+    property string path: ""
+    // The templates whose parts the timeline shows, by name — see Main.unfold.
+    property var unfolded: ({})
     property real playhead: 0
     // The folder the scene lives in: a picked file is written relative to it.
     property string baseDir: ""
@@ -115,6 +119,7 @@ Item {
     signal jumpRequested(var element)
     signal renamed(var element, string name)
     signal says(string sentence)
+    signal partsShown(var element, bool shown)
 
     // The same two entry points as the card, so the shell talks to both alike.
     function open(what, where) { element = what; }
@@ -153,10 +158,16 @@ Item {
     readonly property string cls: element !== null && element.cls !== undefined ? element.cls : ""
     readonly property string kind: element !== null && element.kind !== undefined ? element.kind : ""
     readonly property color hue: Theme.kind[kind] !== undefined ? Theme.kind[kind] : Theme.inkDim
-    readonly property var arguments: cls.length > 0 ? Shell.inputParams(cls) : []
+    // A template's values are its own parameters: `tutorial` is not a name the
+    // scene language knows, so its signature is asked of the module it lives in.
+    readonly property bool isTemplate: kind === "template"
+    readonly property var arguments: cls.length === 0 ? []
+                                     : Shell.inputParams(element.signature !== undefined ? element.signature : cls)
     readonly property bool writable: element !== null
                                      && element.line !== undefined && element.line > 0
                                      && cls.length > 0
+                                     && (element.file === undefined || element.file.length === 0
+                                         || path.length === 0 || element.file === path)
                                      && Shell.callsOnLine(buffer, element.line).indexOf(cls) >= 0
 
     function written(name) {
@@ -188,7 +199,10 @@ Item {
 
     // ── What it is worth now ──────────────────────────────────────────────
     readonly property var meta: {
-        if (root.element === null || root.element.index === undefined || typeof Shell.stateAt !== "function")
+        // A template is many inputs, and the first of them says nothing about
+        // the rest.
+        if (root.element === null || root.element.index === undefined || root.isTemplate
+            || typeof Shell.stateAt !== "function")
             return ({});
         return Shell.stateAt(root.element.index, Math.round(root.playhead * 30));
     }
@@ -209,7 +223,12 @@ Item {
             if (said.startsWith("#"))
                 hex = said;
         }
-        return { label: one.name, param: one, value: shown, isDefault: asWritten.length === 0,
+        // A value written over several lines — a template's list of sections —
+        // reads as one here and is edited in the code: a one-line field would
+        // write it back flattened.
+        const multiline = shown.indexOf("\n") >= 0;
+        return { label: one.name, param: one, value: shown.replace(/\s*\n\s*/g, " "),
+                 multiline: multiline, isDefault: asWritten.length === 0,
                  now: now !== shown && !isColor ? now : "", kind: one.kind,
                  swatch: isColor && hex.length > 0 ? hex.substring(0, 7) : "",
                  choices: root.choicesFor(one.kind), isPath: root.isPathKind(one.name, one.kind) };
@@ -227,7 +246,7 @@ Item {
         { call: "align", fields: ["x", "y"], defaults: { x: "0.5", y: "0.5" } }
     ]
     readonly property var metaRows: {
-        if (root.element === null || root.cls.length === 0)
+        if (root.element === null || root.cls.length === 0 || root.isTemplate)
             return [];
         const on = root.writable ? Shell.callsOnLine(root.buffer, root.element.line) : [];
         let out = [];
@@ -383,6 +402,9 @@ Item {
         property var choices: []
         // A file: a button beside the value opens the system chooser.
         property bool isPath: false
+        // Cut at its end rather than its head: a path is named by its end, a
+        // list by how it starts.
+        property bool headFirst: false
         signal committed(string text)
         function beginEdit() { field.forceActiveFocus(); field.selectAll(); }
 
@@ -566,7 +588,7 @@ Item {
                 color: /^["']/.test(row.value) ? Theme.code.string : Theme.ink
                 font.family: Theme.mono
                 font.pixelSize: 11
-                elide: Text.ElideLeft
+                elide: row.headFirst ? Text.ElideRight : Text.ElideLeft
             }
 
             TextInput {
@@ -850,10 +872,27 @@ Item {
                         swatch: modelData.swatch
                         choices: modelData.choices
                         isPath: modelData.isPath
-                        editable: root.writable
+                        editable: root.writable && !modelData.multiline
+                        headFirst: modelData.multiline
                         onCommitted: (text) => root.argumentWritten(root.element, root.cls, modelData.label,
                                                                     root.fullValue(modelData.param, text))
                     }
+                }
+            }
+
+            // Folded, a template is one clip; its parts are what it made, each
+            // on its own lane under it, for when the inside is the question.
+            Section {
+                title: "Timeline"
+                visible: root.isTemplate
+
+                FieldRow {
+                    last: true
+                    label: "parts"
+                    readonly property bool shown: root.element !== null && root.unfolded[root.cls] === true
+                    value: shown ? "shown" : "folded"
+                    choices: ["folded", "shown"]
+                    onCommitted: (text) => root.partsShown(root.element, text === "shown")
                 }
             }
 
