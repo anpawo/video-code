@@ -7,6 +7,12 @@ one thrown away: after ⌘4 the pane showed a solid colour until the scene ran
 again. Checked on a windowless editor driven through its socket — a frame
 before the switch, ⌘4 through the native menu, a frame after. No window opens.
 
+The meshes kept from the last frame, the scene's and each shape's own, named
+the old renderer's textures too. That held by luck while the new sets landed
+where the old ones had been; once a run had rebuilt the clip, its texture was
+no longer the first, and ⌘3 at the same frame turned the preview black here —
+and killed the editor with SIGSEGV in a window.
+
 Run directly: `python3 test/editor_preview_resize_test.py`
 """
 
@@ -71,6 +77,14 @@ try:
     tell(do="seek", at=1.1)
     time.sleep(0.8)
     tell(do="screenshot", out=f"{work}/after.png")
+
+    tell(do="key", spec="Eval:source.text = source.text.replace('width=W, height=H', 'width=W * 0.8, height=H * 0.8')")
+    tell(do="key", spec="Eval:app.executeScene()")
+    time.sleep(1.5)
+    tell(do="screenshot", out=f"{work}/ran.png")
+    tell(do="key", spec="Menu:3")
+    time.sleep(1.2)
+    tell(do="screenshot", out=f"{work}/switched.png")
     tell(do="quit")
 finally:
     time.sleep(0.5)
@@ -82,5 +96,15 @@ w, h = after.size
 middle = after.crop((int(w * 0.35), int(h * 0.3), int(w * 0.65), int(h * 0.6)))
 spread = ImageStat.Stat(middle).stddev[0]
 check(f"the pane shows the clip, not a flat colour (spread {spread:.1f})", spread > 20)
+
+section("a run rebuilds the clip, then ⌘3 at the same frame")
+
+switched = Image.open(f"{work}/switched.png").convert("L")
+w, h = switched.size
+# Vibe Editing, as a fresh dock lays it out, puts the preview on the left; the
+# shrunk clip covers the middle of it.
+middle = switched.crop((int(w * 0.12), int(h * 0.32), int(w * 0.5), int(h * 0.62)))
+spread = ImageStat.Stat(middle).stddev[0]
+check(f"the pane shows the rebuilt clip, not black (spread {spread:.1f})", spread > 20)
 
 summary()

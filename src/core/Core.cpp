@@ -643,6 +643,10 @@ void VC::Core::uploadTextures(VC::VulkanWidget* widget)
 
 void VC::Core::requeueTextures()
 {
+    // The cached meshes carry the descriptors of the renderer that was just
+    // destroyed: drawn again at the same frame, they bound freed sets.
+    _lastRenderedIndex = SIZE_MAX;
+    _cachedMeshes.clear();
     _pendingTextureUpload.clear();
     for (size_t idx = 0; idx < _inputs.size(); ++idx)
         if (dynamic_cast<Image*>(_inputs[idx].get()) || dynamic_cast<Video*>(_inputs[idx].get()))

@@ -331,6 +331,10 @@ Mesh BezierPath::getMesh(const Metadata& meta, const Config& config)
         if (sameTransform || (uniformOld && uniformNew)) {
             Mesh  mesh = _meshCache;
             float opacityRatio = meta.opacity / static_cast<float>(_meshCacheOpacity);
+            // Not part of the hash: the preview's renderer is rebuilt at each
+            // new pane size and uploads the texture again, under a new set.
+            if (isTextured())
+                mesh.textureDescriptor = textureDescriptor();
 
             if (!sameTransform) {
                 // D = T_ndc * M_new * M_old^-1 * T_ndc^-1. For uniform-scale
