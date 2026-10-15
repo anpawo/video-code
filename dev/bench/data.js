@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792067037745,
+  "lastUpdate": 1792067647583,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1262,6 +1262,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/61235e6c4127af2e535ecde187145eaae1cef445"
         },
         "date": 1792067037325,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "6681801fa22d474497ebb45dce91e72ed15731b9",
+          "message": "templates: one clip on the timeline, their values in the Inspector (#393)\n\n`tutorial(...)` written once in scene.py makes the whole video from lines of\nvideos/lol/tutorial.py, and the timeline drew those lines — Video ×8,\nText ×129, ×191, ×46 — while the one line the scene wrote was nowhere. The\nInspector then read each of those rows against a line of scene.py with the\nsame number.\n\nA template is now any function or class of another file of the project that\nthe scene calls. Each input it makes records the scene's call: the line, the\nname it called, and where the callable lives (\"videos.lol.tutorial:tutorial\"),\nfound by walking out to the scene file's frame. Only inputs made outside the\nscene file are walked, so a scene that makes its own pays one comparison per\ninput, and a render pays nothing: only the editor's run names the scene file.\n\n- The timeline draws one clip per call, named like any element (the variable\n  on its line, else the template's name), in a hue of its own, spanning all it\n  made. Its rows are its members.\n- The Inspector, and the card, show the template's own parameters, read off\n  the call and written back to it — by position where the call has them so.\n  A value written over several lines reads as one line and is edited in the\n  code. Library templates (BarChart, Hemicycle), which the scene imports from\n  their module, now answer too: their class is looked for there.\n- The Inspector's \"Timeline · parts\" row shows the rows under the clip again,\n  for the session, without running the scene.\n- A drag on a template's clip is refused, said: a `.wait()` or a `hide`\n  written on a call that returns nothing would break the scene.\n\nA function default is now written by its name (`clipTransition=whipPan`), and\n`str | None` reads as an optional str.\n\ntest/template_fold_test.py drives a windowless editor over two calls of a\ntemplate beside the scene, and also checks the zoom of #392 and the code pane\nof #391; it fails on both before their commits. 94 test files, 54 scenes\nunchanged.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01SPxsxAbAwXEMCiLh9rgYvS",
+          "timestamp": "2026-10-15T14:28:52+02:00",
+          "tree_id": "6ed869b4e737847367d530c34bfcf423f38d606b",
+          "url": "https://github.com/anpawo/video-code/commit/6681801fa22d474497ebb45dce91e72ed15731b9"
+        },
+        "date": 1792067646172,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
