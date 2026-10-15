@@ -174,17 +174,17 @@
     <span class="chips">
       <span class="chip"><b>86</b> livrés</span>
       <span class="chip"><b>15</b> à faire</span>
-      <span class="chip"><b>93</b> tests</span>
+      <span class="chip"><b>94</b> tests</span>
       <span class="chip"><b>52</b> scènes</span>
     </span>
-    <span class="stamp">13 oct. · 14h</span>
+    <span class="stamp">15 oct. · 14h</span>
   </header>
 
   <div class="board">
 
     <div class="col">
       <div class="card act">
-        <h2>Needs your check <em>une ligne = une chose à faire</em> <span class="n">33</span></h2>
+        <h2>Needs your check <em>une ligne = une chose à faire</em> <span class="n">34</span></h2>
         <ul class="rows">
           <li class="grp">Timeline & clips</li>
           <li class="hot" data-issue="185" data-fix="458e873" data-b="A dragged or stretched clip moves ALONE: the gap after it gives the time back, so nothing after that gap moves, and the clip stops where the gap has nothing left. Hold ⌘ to push everything after it instead. Nothing snaps unless ⇧ is held.¦Why it pushed: a gap starts when the last thing before it has ended. A clip with slack before that moment moves freely; past it, the gap is shortened by what the move cost — measured on the run, not predicted. The writes are one ⌘Z, the left edge with a hide included.¦A gap written as a name (wait(GAP)) cannot give time back: the clip stops there and the code pane says ⌘ pushes instead. test/timeline_drag_test.py drives all of it windowless.¦Yours: does alone-by-default feel right, the stop at the gap&#x27;s end, ⇧ as the snap key, and free numbers like 0.47 in your code."><span class="id">37</span><span class="lbl">A clip moves alone · ⌘ pushes · ⇧ snaps</span><span class="meta lock">458e873 · ta souris</span></li>
@@ -213,6 +213,7 @@
           <li class="grp">Agent</li>
                     <li class="hot" data-issue="176" data-b="Each tool the agent runs is one folded line — its name, what it was pointed at, ✓ or ✗ — opening on its arguments and its result; its reasoning is a grey line above them, with its token count.¦The reasoning&#x27;s words are not shown: measured on a real turn, the stream sends the thinking block empty and only a count.¦An answer no longer shows the terminal&#x27;s colour codes (fa00dff, #375).¦test/agent_stream_test.py plays a recorded turn through a stand-in claude, windowless.¦Yours: a real question in the Agent pane, then a click on a tool&#x27;s line."><span class="id">23</span><span class="lbl">Agent: its steps before the answer, each tool unfolds</span><span class="meta">91e4c8f · ta souris</span></li>
           <li class="hot" data-issue="178" data-b="When a turn leaves the file changed, its answer ends on the changed lines, one per run: line:column of the first new character and what the line now reads, a removed line said as removed. A click puts the caret there — on the coloured view's line while the turn waits, on the text's once taken.¦test/agent_changes_test.py feeds a known diff, reads the note back and follows a link, windowless.¦Yours: a real turn, then a click on a link."><span class="id">25</span><span class="lbl">Agent: answers with the changed lines, clickable</span><span class="meta">eb1608e · ta souris</span></li>
+          <li class="hot" data-issue="389" data-b="Close the editor and reopen it on the project: the Agent pane shows the conversation again, and the agent remembers it — its log and session id are kept in the project&#x27;s dock file, and claude starts with --resume. Measured with a real claude: a number asked on one editor is given back by the next.¦A session that is gone is not a crash: the question is asked again in a fresh one, and the pane says the agent no longer remembers what is above. An interrupted turn keeps its conversation too.¦New conversation, under the field, clears the page and the session.¦test/agent_resume_test.py runs two editors on one dock file against the stand-in claude, windowless.¦Yours: a real conversation, the window closed and reopened, and where New conversation sits."><span class="id">92</span><span class="lbl">Agent: the conversation survives closing the editor</span><span class="meta">00013e5 · ta souris</span></li>
           <li class="hot" data-fix="a7dfeac" data-issue="342" data-b="Plus de rendu d&#x27;image avant de répondre, ⌘R reste à toi.¦Pose une demande simple, regarde le compteur."><span class="id">24</span><span class="lbl">L'agent répond sans se relire</span><span class="meta">claude requis</span></li>
           <li data-issue="170" data-b="« décale ça vers la gauche » sans préciser : il sait de quoi tu parles.¦Il regarde son image, peut piloter l&#x27;éditeur."><span class="id">27</span><span class="lbl">L'agent sait où tu es</span><span class="meta">claude requis</span></li>
           <li data-issue="218" data-b="Raccourci de fenêtre comme ⌘F, le volet garde la main si le curseur y est.¦Ta touche."><span class="id">29</span><span class="lbl">⌘⏎ après une réponse de l'agent</span><span class="meta">ta touche</span></li>

@@ -60,7 +60,7 @@ VC::AgentSession::AgentSession(QObject* parent)
     connect(&_agent, &QProcess::readyReadStandardOutput, this, &AgentSession::readAvailable);
 
     connect(&_agent, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
-        if (_stopping)
+        if (_stopping || _relaunching)
             return;
         Q_EMIT failed(QStringLiteral(
             "`claude` could not be started — it is what the Agent pane talks to. "
@@ -73,7 +73,16 @@ VC::AgentSession::AgentSession(QObject* parent)
     // let the next question start a fresh one.
     connect(&_agent, &QProcess::finished, this, [this](int code, QProcess::ExitStatus) {
         Q_EMIT runningChanged();
-        if (_stopping || !_busy)
+        if (_stopping || _relaunching)
+            return;
+        // Gone before a single event: what `--resume` does on a session that
+        // is not there, when its error `result` did not make it out first.
+        if (_resuming) {
+            const QString said = QString::fromUtf8(_agent.readAllStandardError()).trimmed();
+            resumeLost(said.isEmpty() ? QStringLiteral("exit %1").arg(code) : said);
+            return;
+        }
+        if (!_busy)
             return;
         setBusy(false);
         Q_EMIT turnEnded(0.0, QStringLiteral("the agent stopped (exit %1)").arg(code));
@@ -152,10 +161,41 @@ void VC::AgentSession::setRoot(const QString& root)
 {
     if (root == _root)
         return;
+    const bool moved = !_root.isEmpty();
     _root = root;
     // The root is a command-line argument, so it can only change by starting
     // over. The conversation goes with it — it was about the other project.
+    // The first root is not a move: it is set at launch, before the pane
+    // hands back the session it kept.
     stop();
+    if (moved && !_session.isEmpty()) {
+        _session.clear();
+        Q_EMIT sessionIdChanged();
+    }
+}
+
+void VC::AgentSession::resume(const QString& session)
+{
+    if (session == _session)
+        return;
+    stop();
+    _session = session;
+    Q_EMIT sessionIdChanged();
+}
+
+void VC::AgentSession::forget()
+{
+    stop();
+    setBusy(false);
+    _question.clear();
+    if (!_session.isEmpty()) {
+        _session.clear();
+        Q_EMIT sessionIdChanged();
+    }
+    if (_spent != 0.0) {
+        _spent = 0.0;
+        Q_EMIT spentChanged();
+    }
 }
 
 void VC::AgentSession::watch(const QString& path)
@@ -235,6 +275,11 @@ void VC::AgentSession::ensureStarted()
     };
     if (!_root.isEmpty())
         args << QStringLiteral("--add-dir") << _root;
+    // The conversation outlives the process: any start that knows a session
+    // continues it. Its id does not change — measured, `--resume` keeps it.
+    _resuming = !_session.isEmpty();
+    if (_resuming)
+        args << QStringLiteral("--resume") << _session;
 
     if (!_root.isEmpty())
         _agent.setWorkingDirectory(_root);
@@ -242,13 +287,50 @@ void VC::AgentSession::ensureStarted()
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("VC_SOCKET"), QString::fromStdString(VC::ownSocketPath()));
     _agent.setProcessEnvironment(env);
+    _inbox.clear();
     _agent.start(binary, args);
     if (!_agent.waitForStarted(8000)) {
+        _resuming = false;
         Q_EMIT failed(QStringLiteral("`claude` did not start"));
         return;
     }
-    _session.clear();
     Q_EMIT runningChanged();
+}
+
+void VC::AgentSession::send()
+{
+    _agent.write(_question);
+}
+
+void VC::AgentSession::resumeLost(const QString& why)
+{
+    _resuming = false;
+    _relaunching = true;
+    _inbox.clear();
+    if (!_session.isEmpty()) {
+        _session.clear();
+        Q_EMIT sessionIdChanged();
+    }
+    Q_EMIT resumeFailed(why);
+
+    // Later, not from inside the child's own signal: this stops and starts the
+    // very process whose output is being read.
+    QMetaObject::invokeMethod(this, &AgentSession::relaunch, Qt::QueuedConnection);
+}
+
+void VC::AgentSession::relaunch()
+{
+    stop();
+    _relaunching = false;
+    if (!_busy || _question.isEmpty())
+        return;
+    ensureStarted();
+    if (_agent.state() != QProcess::Running) {
+        // `failed` has said why; the turn is over.
+        setBusy(false);
+        return;
+    }
+    send();
 }
 
 void VC::AgentSession::ask(const QString& text)
@@ -276,7 +358,8 @@ void VC::AgentSession::ask(const QString& text)
     const QJsonObject message{{"role", "user"}, {"content", QJsonArray{content}}};
     const QJsonObject event{{"type", "user"}, {"message", message}};
 
-    _agent.write(QJsonDocument(event).toJson(QJsonDocument::Compact) + "\n");
+    _question = QJsonDocument(event).toJson(QJsonDocument::Compact) + "\n";
+    send();
     setBusy(true);
 }
 
@@ -285,8 +368,8 @@ void VC::AgentSession::interrupt()
     if (!_busy)
         return;
     // There is no "stop this turn" message in the protocol, so the turn is
-    // ended the only way it can be. The conversation is lost with it; the pane
-    // says so rather than pretending the next question continues it.
+    // ended the only way it can be. The conversation is NOT lost with it: the
+    // next question starts a child on the same session.
     stop();
     setBusy(false);
     Q_EMIT turnEnded(0.0, QStringLiteral("interrupted"));
@@ -358,6 +441,19 @@ void VC::AgentSession::readAvailable()
 void VC::AgentSession::handle(const QJsonObject& event)
 {
     const QString type = event.value("type").toString();
+
+    // The first word from a resumed child is either the error saying its
+    // session is gone, or anything else — which means it was there.
+    if (_resuming) {
+        if (type == QLatin1String("result") && event.value("is_error").toBool()) {
+            QStringList errors;
+            for (const QJsonValue& one : event.value("errors").toArray())
+                errors << one.toString();
+            resumeLost(errors.isEmpty() ? event.value("subtype").toString() : errors.join(QStringLiteral("; ")));
+            return;
+        }
+        _resuming = false;
+    }
 
     if (type == QLatin1String("system")) {
         // `init` opens EVERY turn, not just the first, so it is not the sign of

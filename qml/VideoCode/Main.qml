@@ -1197,7 +1197,10 @@ ApplicationWindow {
             codeTheme: Theme.codeTheme,
             codeThemePicked: codeThemePicked,
             keymap: Keymap.bindings,
-            safeMargins: safeMargins
+            safeMargins: safeMargins,
+            // Not an arrangement either, and decided the moment it was said:
+            // the Agent pane's conversation and the session that continues it.
+            agent: agent.kept()
         }));
     }
 
@@ -1300,6 +1303,7 @@ ApplicationWindow {
                 Theme.codeTheme = parsed.codeTheme;
             Keymap.restore(parsed.keymap);
             safeMargins = parsed.safeMargins === true;
+            agent.restore(parsed.agent);
 
             // The trees that DO come from disk are data from another run: they
             // may name panels this build no longer has. Anything unrecognised is
@@ -4295,6 +4299,7 @@ ApplicationWindow {
         id: agent
         visible: false
         onSent: (text) => Agent.ask(app.agentBrief() + text)
+        onRemember: app.saveLayout()
         // Until the turn is taken the buffer shows both sides, so the line to
         // go to is the one in that view.
         onRevealed: (line, column, shown) => source.jump(source.path, (source.diffRows.length > 0 ? shown : line) - 1, column - 1)

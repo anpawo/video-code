@@ -9,6 +9,13 @@
 // tool it ran, a tool's line opening on its arguments and its result. Then what
 // it says, and the answer ends on the lines it changed, each a link to its place
 // in the code pane.
+//
+// It outlives the window. The log and the agent's session id are kept in the
+// project's dock file, beside the keys and the safe margins, so reopening the
+// editor on the project shows the conversation where it was AND continues it:
+// the agent is started on the same session (`claude --resume`), so "it" and
+// "again" still mean what they meant before the window closed. New
+// conversation, under the field, is the one way to start from nothing.
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -21,6 +28,9 @@ Item {
     // A changed line was clicked: its line and column once the turn is taken,
     // and its line in the coloured view shown until then. All 1-based.
     signal revealed(int line, int column, int shown)
+    // Something worth keeping changed: a question, an answer, a session. The
+    // shell writes the dock file, which is where `kept()` goes.
+    signal remember()
 
     // The conversation, as it happens. Built by appending to a plain list
     // rather than by a model class: a turn is a handful of entries, and what
@@ -164,6 +174,54 @@ Item {
             return;
         root.edit(root.turn, { ended: Date.now() });
         root.turn = -1;
+        root.remember();
+    }
+
+    // How much of the conversation the dock file keeps: the last hundred
+    // questions and their answers. A tool's output is already cut to a dozen
+    // lines by the session, so an entry is a few hundred bytes, not a file.
+    readonly property int keeps: 200
+
+    // What survives closing the editor, for the shell to write.
+    function kept() {
+        return { session: Agent.sessionId, log: root.log.slice(-root.keeps) };
+    }
+
+    // What `kept()` wrote, from another run. Data from disk, so anything that
+    // is not an entry this pane draws is dropped rather than trusted; an
+    // answer that was still being written when the window closed is closed
+    // here, saying so — its dots would otherwise breathe forever.
+    function restore(saved) {
+        if (!saved || typeof saved !== "object")
+            return;
+        const entries = Array.isArray(saved.log) ? saved.log : [];
+        root.log = entries
+            .filter((entry) => entry && (entry.who === "me" || entry.who === "agent") && Array.isArray(entry.body))
+            .map((entry) => {
+                if (entry.who === "me")
+                    return entry;
+                const body = entry.body.map((part) => Object.assign({}, part, { open: false },
+                                                                    part.state === "run" ? { state: "bad" } : {}));
+                if (entry.started > 0 && !(entry.ended > 0))
+                    return Object.assign({}, entry, { ended: entry.started,
+                        body: body.concat([{ kind: "note", text: "— the editor closed before this answer ended" }]) });
+                return Object.assign({}, entry, { body: body });
+            });
+        root.turn = -1;
+        if (typeof saved.session === "string" && saved.session.length > 0)
+            Agent.resume(saved.session);
+    }
+
+    // New conversation: nothing on the page, nothing in the agent's context,
+    // nothing in the dock file.
+    function fresh() {
+        if (Agent.busy)
+            return;
+        Agent.forget();
+        root.log = [];
+        root.turn = -1;
+        root.follows = true;
+        root.remember();
     }
 
     function elapsed(entry) {
@@ -206,6 +264,17 @@ Item {
             root.say(why);
             root.finish();
         }
+
+        // The session the page continues is gone: the question has been asked
+        // again in a new one, and the page above it is no longer something the
+        // agent remembers. Said, rather than letting "it" quietly stop meaning
+        // what it meant.
+        function onResumeFailed(why) {
+            root.step({ kind: "note", text: "— the conversation above could not be picked up again (" + why
+                                            + "): this question starts a new one, and the agent no longer remembers what is above." });
+        }
+
+        function onSessionIdChanged() { root.remember(); }
     }
 
     ScrollView {
@@ -290,8 +359,8 @@ Item {
                                     width: parent.width
                                     topPadding: part.index > 0 ? 6 : 0
                                     text: part.isStep ? "" : part.modelData.text
-                                    textFormat: Text.MarkdownText
-                                    color: Theme.ink
+                                    textFormat: part.modelData.kind === "note" ? Text.PlainText : Text.MarkdownText
+                                    color: part.modelData.kind === "note" ? Theme.inkDim : Theme.ink
                                     font.family: Theme.ui
                                     font.pixelSize: 12
                                     lineHeight: 1.4
@@ -500,6 +569,22 @@ Item {
             // it; before the send button, which has its own.
             HoverTint {}
 
+            // New conversation, small and to the left of send: a thing done once
+            // in a while, never by accident in the middle of one.
+            Text {
+                id: fresh
+                anchors { left: parent.left; leftMargin: 14; verticalCenter: send.verticalCenter }
+                readonly property bool can: !Agent.busy && (root.log.length > 0 || Agent.sessionId.length > 0)
+                text: "New conversation"
+                color: freshHover.hovered && can ? Theme.ink : Theme.inkFaint
+                opacity: can ? 1 : 0.5
+                font.family: Theme.ui
+                font.pixelSize: 11
+
+                HoverHandler { id: freshHover; cursorShape: fresh.can ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                TapHandler { enabled: fresh.can; onTapped: root.fresh() }
+            }
+
             // Send, as a round button; stop while it works.
             Rectangle {
                 id: send
@@ -539,6 +624,7 @@ Item {
         root.now = Date.now();
         root.append({ who: "agent", body: [], started: root.now, ended: 0 });
         root.turn = root.log.length - 1;
+        root.remember();
         // The shell asks, not the pane: it prefixes what the author is
         // looking at, and only it knows.
         root.sent(text);
