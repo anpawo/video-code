@@ -200,6 +200,8 @@ namespace VC
         //: The resumed session is gone: start over without it, and ask the
         //: question again.
         void resumeLost(const QString& why);
+        //: The fresh child that replaces a lost session, asked the same question.
+        void relaunch();
         void send();
 
         QProcess   _agent;
@@ -227,7 +229,7 @@ namespace VC
         bool _resuming = false;
         //: The child is being replaced after a lost session: its exit is not
         //: the turn ending.
-        bool _relaunching = false;
-        double     _spent = 0.0;
+        bool   _relaunching = false;
+        double _spent = 0.0;
     };
 }

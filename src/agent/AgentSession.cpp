@@ -315,19 +315,22 @@ void VC::AgentSession::resumeLost(const QString& why)
 
     // Later, not from inside the child's own signal: this stops and starts the
     // very process whose output is being read.
-    QMetaObject::invokeMethod(this, [this] {
-        stop();
-        _relaunching = false;
-        if (!_busy || _question.isEmpty())
-            return;
-        ensureStarted();
-        if (_agent.state() != QProcess::Running) {
-            // `failed` has said why; the turn is over.
-            setBusy(false);
-            return;
-        }
-        send();
-    }, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, &AgentSession::relaunch, Qt::QueuedConnection);
+}
+
+void VC::AgentSession::relaunch()
+{
+    stop();
+    _relaunching = false;
+    if (!_busy || _question.isEmpty())
+        return;
+    ensureStarted();
+    if (_agent.state() != QProcess::Running) {
+        // `failed` has said why; the turn is over.
+        setBusy(false);
+        return;
+    }
+    send();
 }
 
 void VC::AgentSession::ask(const QString& text)
