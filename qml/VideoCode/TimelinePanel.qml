@@ -454,10 +454,11 @@ Item {
                 // which left it riding a few pixels above the label beside it.
                 height: 14
                 padding: 0
-                // 25 px per second at the least, whatever the scene's length:
-                // the floor used to be the fitting zoom, which pushed the default
-                // up on a long scene and made the opening zoom unreachable there.
-                from: 25
+                // 25 px per second at the least — or less, down to the whole
+                // scene in the pane, once the scene is too long to fit at 25:
+                // a floor of 25 alone left a two-minute scene showing a third
+                // of itself at the farthest it would go, and ⇧Z short of 100 %.
+                from: root.fitZoom > 0 ? Math.min(25, root.fitZoom) : 25
                 // Twice that at most: five seconds on screen and no further. A
                 // value already past it — saved, or left over from a wider pane —
                 // is pulled back by the Slider itself when the range moves.
