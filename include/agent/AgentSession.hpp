@@ -69,6 +69,15 @@ namespace VC
     //   before reading a word.  That is not a turn that failed: the question is
     //   asked again in a fresh session, and `resumeFailed` says the agent no
     //   longer remembers what the pane still shows.
+    //
+    //   Model and effort
+    //   ────────────────
+    //   `--model` and `--effort` are command-line arguments too, so a new
+    //   choice is a new child — started on the next question, not the moment
+    //   the picker moves, and resumed: the conversation carries over to the
+    //   other model.  Measured: a session begun on haiku and resumed on sonnet
+    //   remembered what it had been told.  Empty means "as `claude` would
+    //   have it", which is to say no flag at all.
     // -----------------------------------------------------------------------
     class AgentSession : public QObject
     {
@@ -88,6 +97,12 @@ namespace VC
         //: A turn has landed and has not been accepted or dropped: the editor
         //: is showing colours and the scene has NOT been run.
         Q_PROPERTY(bool pending READ pending NOTIFY pendingChanged)
+        //: `--model`: an alias (opus, sonnet, haiku) or a full name; empty
+        //: passes nothing. Applies from the next question.
+        Q_PROPERTY(QString model READ model WRITE setModel NOTIFY modelChanged)
+        //: `--effort`: low, medium, high, xhigh or max; empty passes nothing.
+        //: Applies from the next question.
+        Q_PROPERTY(QString effort READ effort WRITE setEffort NOTIFY effortChanged)
 
     public:
 
@@ -105,6 +120,14 @@ namespace VC
         bool revertable() const;
 
         bool pending() const { return _pending; }
+
+        QString model() const { return _model; }
+
+        void setModel(const QString& model);
+
+        QString effort() const { return _effort; }
+
+        void setEffort(const QString& effort);
 
         //: The project the agent is allowed to work in. Set before the first
         //: question; changing it later restarts the child.
@@ -185,6 +208,8 @@ namespace VC
         void spentChanged();
         void revertableChanged();
         void pendingChanged();
+        void modelChanged();
+        void effortChanged();
         //: The agent finished and the file is not what it was. The pane colours
         //: the buffer and waits — it does NOT run the scene.
         void changed();
@@ -214,6 +239,12 @@ namespace VC
         QString                 _root;
         QString                 _session;
         QString                 _watched;
+        QString                 _model;
+        QString                 _effort;
+        //: What the running child was started with: a question asked after
+        //: either changed is asked of a new one.
+        QString _startedModel;
+        QString _startedEffort;
         //: The watched file as it stood when the current turn opened.
         QByteArray _before;
         //: The file as it stood before the turn, and as it stands after it.
