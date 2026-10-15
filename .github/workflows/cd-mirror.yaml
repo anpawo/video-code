@@ -1,4 +1,4 @@
-name: Mirror
+name: Mirror to the Epitech repository
 
 # Epitech grades the EIP from its own copy of this repository. Every push here
 # is replayed there, branches and tags alike.
@@ -12,10 +12,15 @@ on:
 
 jobs:
   mirror:
+    name: Push every branch and tag to the Epitech copy
     runs-on: ubuntu-latest
     # Not from the copy itself, where this file also lives.
     if: github.repository != 'EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset'
     steps:
+      - name: What this workflow runs
+        run: |
+          echo "On every push and every new pull request: pushes every branch and tag to EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset, the copy of this repository that Epitech grades the EIP from." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

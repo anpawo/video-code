@@ -1,4 +1,4 @@
-name: Nightly
+name: Nightly tests on the latest dependencies
 
 on:
   schedule:
@@ -12,11 +12,15 @@ jobs:
   # requirements.txt pins nothing. A pyright release turns the type gate red
   # with no commit behind it — better learnt at 3am than on someone's push.
   drift:
-    name: unpinned dependency drift
+    name: Python tests and type-check, latest dependencies
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      - name: What this workflow runs
+        run: |
+          echo "Every night at 03:00 UTC, and on demand: installs the newest release of every dependency (requirements.txt pins nothing) and runs the Python tests and the type-check, so a dependency release that breaks them shows here and not on someone's push." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:

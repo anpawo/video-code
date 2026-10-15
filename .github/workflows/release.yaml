@@ -1,4 +1,4 @@
-name: Release binaries
+name: Release archives (Linux, macOS)
 
 # Both zips, on every push, replacing the assets of the current release.
 #
@@ -30,11 +30,15 @@ permissions:
 
 jobs:
   linux:
-    name: Ubuntu 24.04 · x86_64
+    name: Linux x86_64 archive (Ubuntu 24.04)
     runs-on: ubuntu-24.04
     permissions:
       contents: write # uploads the asset to the release
     steps:
+      - name: What this workflow runs
+        run: |
+          echo "On every push, and on demand: builds the Linux and macOS archives, runs each one on a machine that never built it, and replaces those assets on the latest release (or the tag given)." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
 
       # Same list as ci.yaml's build lane, minus LaTeX (no test runs here),
@@ -119,7 +123,7 @@ jobs:
           echo "linux tar.xz → $tag ($(git rev-parse --short HEAD))" >> "$GITHUB_STEP_SUMMARY"
 
   macos:
-    name: macOS 14 · Apple Silicon
+    name: macOS Apple Silicon archive (macOS 14)
     runs-on: macos-14
     permissions:
       contents: write
@@ -134,7 +138,7 @@ jobs:
           brew install --quiet ninja opencv ffmpeg freetype glslang \
                                molten-vk vulkan-headers vulkan-loader
 
-      # setup-python and not the runner's own: the `build (macOS)` lane of
+      # setup-python and not the runner's own: the macOS build lane of
       # ci.yaml pip-installs into one Python while CMake finds another, and
       # dies on "Could not find pybind11". One Python, named, for both.
       - uses: actions/setup-python@v5

@@ -1,4 +1,4 @@
-name: CI
+name: Tests, lint and builds
 
 on:
   pull_request:
@@ -19,11 +19,16 @@ permissions:
 jobs:
   # ── lane A: no compiler, no LaTeX, no Qt. Answers "is this branch sane?" ──
   fast:
-    name: fast gates
+    name: Python tests, types and API coverage (no build)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      # GitHub has no description key for a workflow: its run page shows this.
+      - name: What this workflow runs
+        run: |
+          echo "On every push and pull request: the Python tests, type-check, API doc and test coverage, repetition and render-digest checks with no build; QML lint; C++ formatting; a Linux build with the full test suite and a showcase render; a macOS build; and the perf history, published from main." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # coverage_check --pushed reads a commit range
@@ -103,7 +108,7 @@ jobs:
   # access code execution on that hardware — `workflow_dispatch` runs the
   # workflow file from the ref it is given, and `main` is not protected.
   history:
-    name: remember
+    name: Perf history (check, publish from main)
     needs: [fast]
     # On every push and pull request, not only on `main`: `--verify` is what
     # refuses a row typed into history.jsonl, and a pull request is where such
@@ -159,7 +164,7 @@ jobs:
 
   # ── lane B: the chrome, statically. Catches what --check-chrome cannot. ──
   qml:
-    name: qmllint
+    name: QML lint
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -184,7 +189,7 @@ jobs:
 
   # ── lane C: formatting. 40s, and the only job that needs a container. ──
   format:
-    name: clang-format
+    name: C++ formatting
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -216,7 +221,7 @@ jobs:
   # on the day someone else contributes, or the day the Mac build breaks in a
   # commit its author never compiled.
   macos:
-    name: build (macOS)
+    name: macOS build, C++ tests and QML load
     runs-on: macos-14
     permissions:
       contents: read
@@ -276,7 +281,7 @@ jobs:
 
   # ── lane D: the compiler and everything that needs a binary. ──
   build:
-    name: build + full suite
+    name: Linux build, full test suite and showcase render
     runs-on: ubuntu-latest
     permissions:
       contents: read
