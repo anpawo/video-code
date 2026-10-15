@@ -51,6 +51,24 @@ namespace VC
     //   then asking for it back works across two turns on one process.  A
     //   `result` event closes each turn.  An `init` event opens each one — NOT
     //   only the first, so it is not the sign of a new session.
+    //
+    //   One conversation, many processes
+    //   ────────────────────────────────
+    //   The child is not the conversation: `claude` writes every session to
+    //   disk under its id, and `--resume <id>` starts a new process on an old
+    //   one — measured, a number asked to be remembered on one process was
+    //   given back by the next, under the same id.  So every start after the
+    //   first resumes the session already known: a restart for a new setting,
+    //   an interrupted turn, and an editor closed and reopened on the project,
+    //   whose pane hands back the id it kept in the dock file (`resume()`).
+    //   Only `forget()` starts a conversation that knows nothing.
+    //
+    //   A session can be gone — `claude` was reinstalled, its files were
+    //   cleaned, the project moved.  `claude -p --resume` then answers with one
+    //   error `result` ("No conversation found with session ID: …") and exits
+    //   before reading a word.  That is not a turn that failed: the question is
+    //   asked again in a fresh session, and `resumeFailed` says the agent no
+    //   longer remembers what the pane still shows.
     // -----------------------------------------------------------------------
     class AgentSession : public QObject
     {
@@ -100,6 +118,15 @@ namespace VC
         Q_INVOKABLE void ask(const QString& text);
         Q_INVOKABLE void interrupt();
 
+        //: The conversation the next start continues: an id kept from another
+        //: run. A child already talking in another session is stopped — the
+        //: next question is in this one.
+        Q_INVOKABLE void resume(const QString& session);
+
+        //: New conversation. The child goes, the session id with it, and the
+        //: cost starts again from nothing: the next question is the first one.
+        Q_INVOKABLE void forget();
+
         //: The turn's changes, line by line, as the pane draws them: a list of
         //: `{kind, text}` where kind is "same", "add" or "del". The whole file,
         //: not a hunk — the pane IS the file, and a line it does not receive is
@@ -148,6 +175,9 @@ namespace VC
         void turnEnded(double cost, const QString& error);
         //: The child could not be started, or died.
         void failed(const QString& why);
+        //: The session to continue no longer exists. The question in flight
+        //: has been asked again in a fresh one; `why` is what `claude` said.
+        void resumeFailed(const QString& why);
 
         void busyChanged();
         void runningChanged();
@@ -167,9 +197,16 @@ namespace VC
         void handleAssistant(const QJsonObject& message);
         void handleToolResult(const QJsonObject& message);
         void setBusy(bool busy);
+        //: The resumed session is gone: start over without it, and ask the
+        //: question again.
+        void resumeLost(const QString& why);
+        void send();
 
         QProcess   _agent;
         QByteArray _inbox;
+        //: The question in flight, as it was written — asked again as it is if
+        //: the session it went to turns out to be gone.
+        QByteArray _question;
         //: tool_use id -> tool name, so a result can say what it answered.
         QHash<QString, QString> _calls;
         QString                 _root;
@@ -185,6 +222,12 @@ namespace VC
         bool       _pending = false;
         bool       _busy = false;
         bool       _stopping = false;
+        //: Started with `--resume` and not yet heard from: the first event
+        //: says whether the session was still there.
+        bool _resuming = false;
+        //: The child is being replaced after a lost session: its exit is not
+        //: the turn ending.
+        bool _relaunching = false;
         double     _spent = 0.0;
     };
 }

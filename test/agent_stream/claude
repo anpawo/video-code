@@ -4,8 +4,15 @@
 The events are the ones a real turn sent on 2 Oct. 2026, shortened: thinking that
 arrives as a token count and an empty block, two reads answered out of order with
 one failing, and an answer a terminal hook has coloured and padded.
+
+`--resume <id>` continues that session — its id is the one `init` carries — unless
+the id begins with "gone", which is answered the way the real one answers a
+session it cannot find (measured on 15 Oct. 2026): one error `result`, exit 1,
+before reading a word. VC_STAND_IN_ARGS names a file each start appends its
+arguments to, one JSON list per line.
 """
 import json
+import os
 import sys
 
 
@@ -21,8 +28,21 @@ def result(tool, text, failed=False):
     out({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tool, "content": text, "is_error": failed}]}})
 
 
+args = sys.argv[1:]
+if os.environ.get("VC_STAND_IN_ARGS"):
+    with open(os.environ["VC_STAND_IN_ARGS"], "a") as told:
+        told.write(json.dumps(args) + "\n")
+
+session = args[args.index("--resume") + 1] if "--resume" in args else "stand-in"
+if session.startswith("gone"):
+    gone = f"No conversation found with session ID: {session}"
+    print(gone, file=sys.stderr, flush=True)
+    out({"type": "result", "subtype": "error_during_execution", "is_error": True, "num_turns": 0,
+         "session_id": session, "total_cost_usd": 0, "errors": [gone]})
+    sys.exit(1)
+
 for _ in sys.stdin:
-    out({"type": "system", "subtype": "init", "session_id": "stand-in"})
+    out({"type": "system", "subtype": "init", "session_id": session})
     out({"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 50, "estimated_tokens_delta": 50})
     out({"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 211, "estimated_tokens_delta": 161})
     assistant({"type": "thinking", "thinking": "", "signature": "x"})
