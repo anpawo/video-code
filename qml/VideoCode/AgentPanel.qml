@@ -16,6 +16,11 @@
 // the agent is started on the same session (`claude --resume`), so "it" and
 // "again" still mean what they meant before the window closed. New
 // conversation, under the field, is the one way to start from nothing.
+//
+// Beside it, which model answers and how hard it thinks: `claude --model` and
+// `--effort`, kept in the same file. A change is felt from the next question,
+// on a new child resumed on the same session — the conversation goes on, on
+// the other model.
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -177,6 +182,37 @@ Item {
         root.remember();
     }
 
+    // What the pickers offer: what the pane says, and what `claude` is passed.
+    // The aliases follow the latest of each family, so this list does not age
+    // with every release. An empty value passes no flag at all.
+    readonly property var models: [
+        { label: "Default model", value: "" },
+        { label: "Opus", value: "opus" },
+        { label: "Sonnet", value: "sonnet" },
+        { label: "Haiku", value: "haiku" }
+    ]
+    readonly property var efforts: [
+        { label: "Default effort", value: "" },
+        { label: "Low effort", value: "low" },
+        { label: "Medium effort", value: "medium" },
+        { label: "High effort", value: "high" },
+        { label: "Extra high effort", value: "xhigh" },
+        { label: "Max effort", value: "max" }
+    ]
+
+    // A value from the file, if it is one the picker offers; "" otherwise.
+    function known(choices, value) {
+        return choices.some((one) => one.value === value) ? value : "";
+    }
+
+    function pick(which, value) {
+        if (which === "model")
+            Agent.model = root.known(root.models, value);
+        else
+            Agent.effort = root.known(root.efforts, value);
+        root.remember();
+    }
+
     // How much of the conversation the dock file keeps: the last hundred
     // questions and their answers. A tool's output is already cut to a dozen
     // lines by the session, so an entry is a few hundred bytes, not a file.
@@ -184,7 +220,7 @@ Item {
 
     // What survives closing the editor, for the shell to write.
     function kept() {
-        return { session: Agent.sessionId, log: root.log.slice(-root.keeps) };
+        return { session: Agent.sessionId, log: root.log.slice(-root.keeps), model: Agent.model, effort: Agent.effort };
     }
 
     // What `kept()` wrote, from another run. Data from disk, so anything that
@@ -194,6 +230,8 @@ Item {
     function restore(saved) {
         if (!saved || typeof saved !== "object")
             return;
+        Agent.model = root.known(root.models, saved.model);
+        Agent.effort = root.known(root.efforts, saved.effort);
         const entries = Array.isArray(saved.log) ? saved.log : [];
         root.log = entries
             .filter((entry) => entry && (entry.who === "me" || entry.who === "agent") && Array.isArray(entry.body))
@@ -576,13 +614,31 @@ Item {
                 anchors { left: parent.left; leftMargin: 14; verticalCenter: send.verticalCenter }
                 readonly property bool can: !Agent.busy && (root.log.length > 0 || Agent.sessionId.length > 0)
                 text: "New conversation"
-                color: freshHover.hovered && can ? Theme.ink : Theme.inkFaint
+                color: freshArea.containsMouse && can ? Theme.ink : Theme.inkFaint
                 opacity: can ? 1 : 0.5
                 font.family: Theme.ui
                 font.pixelSize: 11
 
-                HoverHandler { id: freshHover; cursorShape: fresh.can ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                TapHandler { enabled: fresh.can; onTapped: root.fresh() }
+                MouseArea {
+                    id: freshArea
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    hoverEnabled: true
+                    enabled: fresh.can
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.fresh()
+                }
+            }
+
+            // Which model answers and how hard it thinks, right of New
+            // conversation and left of send: read before asking, rarely changed.
+            Row {
+                id: pickers
+                anchors { right: send.left; rightMargin: 10; verticalCenter: send.verticalCenter }
+                spacing: 12
+
+                Pick { which: "model"; choices: root.models; value: Agent.model }
+                Pick { which: "effort"; choices: root.efforts; value: Agent.effort }
             }
 
             // Send, as a round button; stop while it works.
@@ -610,6 +666,66 @@ Item {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: Agent.busy ? Agent.interrupt() : root.ask(input.text)
+                }
+            }
+        }
+    }
+
+    // One picker: its choice as a word and a ▾, a short list opening ABOVE it —
+    // the field sits at the bottom of the pane, and a list below would open
+    // off it. The inspector's closed-type menu, turned upside down.
+    component Pick: Text {
+        id: picker
+        required property string which
+        required property var choices
+        required property string value
+        readonly property var current: choices.find((one) => one.value === value) || choices[0]
+
+        text: current.label + " ▾"
+        color: pickArea.containsMouse ? Theme.ink : Theme.inkFaint
+        font.family: Theme.ui
+        font.pixelSize: 11
+
+        MouseArea {
+            id: pickArea
+            anchors.fill: parent
+            anchors.margins: -4
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: list.open()
+        }
+
+        Popup {
+            id: list
+            x: picker.width - width
+            y: -height - 8
+            width: 150
+            padding: 4
+            background: Rectangle { color: Theme.panel; radius: 8; border.width: 1; border.color: Theme.edge }
+            contentItem: Column {
+                Repeater {
+                    model: picker.choices
+                    Rectangle {
+                        id: choice
+                        required property var modelData
+                        width: list.width - 8
+                        height: 26
+                        radius: 5
+                        color: choiceArea.containsMouse ? Qt.alpha(Theme.live, 0.15) : "transparent"
+                        Text {
+                            anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
+                            text: choice.modelData.label
+                            color: choice.modelData.value === picker.value ? Theme.live : Theme.ink
+                            font.family: Theme.ui
+                            font.pixelSize: 11
+                        }
+                        MouseArea {
+                            id: choiceArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: { root.pick(picker.which, choice.modelData.value); list.close(); }
+                        }
+                    }
                 }
             }
         }

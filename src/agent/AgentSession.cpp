@@ -198,6 +198,24 @@ void VC::AgentSession::forget()
     }
 }
 
+void VC::AgentSession::setModel(const QString& model)
+{
+    if (model == _model)
+        return;
+    // Not a restart here: the picker may move in the middle of a turn, and the
+    // turn is not the picker's to end. `ask()` sees the difference.
+    _model = model;
+    Q_EMIT modelChanged();
+}
+
+void VC::AgentSession::setEffort(const QString& effort)
+{
+    if (effort == _effort)
+        return;
+    _effort = effort;
+    Q_EMIT effortChanged();
+}
+
 void VC::AgentSession::watch(const QString& path)
 {
     _watched = path;
@@ -275,6 +293,12 @@ void VC::AgentSession::ensureStarted()
     };
     if (!_root.isEmpty())
         args << QStringLiteral("--add-dir") << _root;
+    if (!_model.isEmpty())
+        args << QStringLiteral("--model") << _model;
+    if (!_effort.isEmpty())
+        args << QStringLiteral("--effort") << _effort;
+    _startedModel = _model;
+    _startedEffort = _effort;
     // The conversation outlives the process: any start that knows a session
     // continues it. Its id does not change — measured, `--resume` keeps it.
     _resuming = !_session.isEmpty();
@@ -337,6 +361,11 @@ void VC::AgentSession::ask(const QString& text)
 {
     if (text.isEmpty() || _busy)
         return;
+
+    // A model or an effort picked since the child started is a new child —
+    // on the same session, so it is the same conversation.
+    if (_agent.state() != QProcess::NotRunning && (_startedModel != _model || _startedEffort != _effort))
+        stop();
 
     ensureStarted();
     if (_agent.state() != QProcess::Running)
