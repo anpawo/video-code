@@ -8,6 +8,7 @@ import json
 import math
 import os
 import sys
+import typing
 
 
 sys.path.append(".")
@@ -29,6 +30,7 @@ def _resetContext():
     Context.waitOffset = 0
     Context.backgroundColor = None
     Context.origin = {}
+    Context.template = {}
     # The side table too. The editor runs a scene on every gesture, and
     # statements that outlive their run pile up in it — a hundred a frame for a
     # group — until an effect is attributed to a line that moved three edits ago.
@@ -692,19 +694,21 @@ def sceneModel() -> dict:
             firstSeen = frames[0] if frames else 0
 
         file, line, cls = Context.origin.get(index, ("", 0, ""))
-        elements.append(
-            {
-                "index": index,
-                "kind": cls or entry[-1]["type"],
-                "file": file,
-                "line": line,
-                "first": firstSeen,
-                "last": lastSeen,
-                "seen": seen,
-                "effects": effects,
-                "points": points,
-            }
-        )
+        element = {
+            "index": index,
+            "kind": cls or entry[-1]["type"],
+            "file": file,
+            "line": line,
+            "first": firstSeen,
+            "last": lastSeen,
+            "seen": seen,
+            "effects": effects,
+            "points": points,
+        }
+        if index in Context.template:
+            at, row, name, signature = Context.template[index]
+            element["template"] = {"file": at, "line": row, "name": name, "signature": signature}
+        elements.append(element)
 
     # ── Where the scene's time joins ──────────────────────────────────────
     # A `wait()` is the one place the language lets time propagate: everything
@@ -1029,12 +1033,17 @@ def inputSignature(className: str) -> list[dict]:
     """
     import inspect
 
-    import videocode
+    # A template the scene imported from a file of its own is named by where it
+    # lives — "videos.lol.tutorial:tutorial" — since the scene language has
+    # never heard of it.
+    if ":" in className:
+        fn = _templateCallable(className)
+        return [p for p in _effectParameters(fn) if p["name"] != "self"] if fn is not None else []
 
     # `Video.position` answers for the setter: a value set on the element's line
     # is typed by the same signature a person calls to set it.
     className, _, method = className.partition(".")
-    target = getattr(videocode, className, None)
+    target = _inputClass(className)
     if target is None or not inspect.isclass(target):
         return []
 
@@ -1060,14 +1069,21 @@ def parameterSlot(owner: str, call: str, name: str) -> int:
     """
     import inspect
 
-    import videocode
+    if ":" in owner:
+        return _slotIn(_templateCallable(owner), name)
 
-    target = getattr(videocode, owner, None) if owner else None
+    target = _inputClass(owner) if owner else None
     fn = getattr(target, call, None) if inspect.isclass(target) else None
     if fn is None:
-        fn = getattr(videocode, call, None)
+        fn = _inputClass(call)
         if inspect.isclass(fn):
             fn = fn.__init__
+    return _slotIn(fn, name)
+
+
+def _slotIn(fn, name: str) -> int:
+    import inspect
+
     if not callable(fn):
         return -1
 
@@ -1086,6 +1102,40 @@ def parameterSlot(owner: str, call: str, name: str) -> int:
             return slot
         slot += 1
     return -1
+
+
+def _inputClass(name: str):
+    """
+    A class a scene can make, by name: one the scene language exposes, or a
+    template of the library's — `Hemicycle`, `BarChart` — which a scene
+    imports from its own module, so it is looked for among the ones loaded.
+    """
+    import videocode
+
+    found = getattr(videocode, name, None)
+    if found is not None:
+        return found
+    for module, loaded in list(sys.modules.items()):
+        if module.startswith("videocode.template.input.") and isinstance(getattr(loaded, name, None), type):
+            return getattr(loaded, name)
+    return None
+
+
+def _templateCallable(qualified: str):
+    """
+    The function a template call runs, from "module:qualname" — the name
+    `Context.template` records: `tutorial`, or `RunePage.__init__` for a class.
+    Looked up in the modules the run already imported, never imported here:
+    reading a signature must not run anybody's file. None when it cannot be
+    reached — a function defined inside another has no name to be found by.
+    """
+    module, _, qualname = qualified.partition(":")
+    target = sys.modules.get(module)
+    for part in qualname.split("."):
+        target = getattr(target, part, None)
+        if target is None:
+            return None
+    return target.__init__ if isinstance(target, type) else target
 
 
 def enumValues(name: str) -> list[str]:
@@ -1195,10 +1245,17 @@ def _effectParameters(fn) -> list[dict]:
             # is what has to come back: the object's own repr is an address, which
             # nobody can paste into a call. Found by identity in the namespace
             # that names them, so a new easing needs no entry anywhere here.
-            written = _namedEasing(default)
+            # Any other function is written by its name: a template's
+            # `clipTransition=whipPan` is what the call would say.
+            written = _namedEasing(default) or (getattr(default, "__name__", "") if callable(default) else "")
 
         annotation = parameter.annotation
         kind = annotation if isinstance(annotation, str) else getattr(annotation, "__name__", "")
+        # `str | None` is an optional str, which the editor already knows how
+        # to say; its own name is just "Union".
+        others = [a for a in typing.get_args(annotation) if a is not type(None)]
+        if kind == "Union" and len(others) == 1 and len(typing.get_args(annotation)) == 2:
+            kind = f"maybe[{getattr(others[0], '__name__', others[0])}]"
 
         # Whether the call can be made without it. NOT "the default came back
         # empty": a colour the library does not name has no spelling to show and
@@ -1229,6 +1286,7 @@ def execSource(source: str, filepath: str) -> dict:
     failure the caller keeps whatever it had.
     """
     _resetContext()
+    Context.sceneFile = filepath
 
     scope = dict(globals())
     scope["__name__"] = "Scene"

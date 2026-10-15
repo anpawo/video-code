@@ -234,6 +234,18 @@ class Context:
     # both travel somewhere it does not belong and defeat the incremental reload.
     origin: dict[int, tuple[str, int, str]] = {}
 
+    # Which call in the scene made each input, when that call is a TEMPLATE —
+    # a function or class of another file of the project, `tutorial(...)` from
+    # videos/lol: (scene file, line, name, "module:qualname"). `origin` names
+    # the line inside the template, which is the template's business; the
+    # editor shows the call the scene wrote. Another side table, for the same
+    # reason as `origin`.
+    template: dict[int, tuple[str, int, str, str]] = {}
+
+    # The file `execSource` is running, which is where a template call is
+    # written. Empty for a render: only the editor asks which template made what.
+    sceneFile: str = ""
+
     # Wait and Timestamp actions; C++ consumes these separately.
     events: list[StackAction] = []
 
@@ -355,7 +367,43 @@ class Context:
     @staticmethod
     def create(inputIndex: int, inputType: str, inputArgs: dict[str, Any]):
         Context.stack.setdefault(inputIndex, {})[-1] = {"type": inputType, "args": inputArgs}
-        Context.origin[inputIndex] = Context._callSite()
+        Context.origin[inputIndex] = where = Context._callSite()
+        # Only an input made outside the scene file can have come through a
+        # template, so a scene that makes its own pays one comparison per input.
+        if Context.sceneFile and where[0] and where[0] != Context.sceneFile:
+            made = Context._templateCall()
+            if made is not None:
+                Context.template[inputIndex] = made
+
+    @staticmethod
+    def _templateCall() -> tuple[str, int, str, str] | None:
+        """
+        The scene's call that this input was made under, walking out to the
+        scene file: the line there, and the function or class it called — the
+        frame just inside the scene's. None when the scene file is not on the
+        stack at all.
+        """
+        frame = sys._getframe(2)
+        inner = None
+        while frame is not None and frame.f_code.co_filename != Context.sceneFile:
+            # An import's own frames (<frozen importlib…>) are not a call
+            # anyone wrote.
+            if not frame.f_code.co_filename.startswith("<"):
+                inner = frame
+            frame = frame.f_back
+        if frame is None or inner is None:
+            return None
+
+        code = inner.f_code
+        owner = inner.f_locals.get("self") if code.co_name == "__init__" else None
+        module = inner.f_globals.get("__name__", "")
+        if owner is not None:
+            name = type(owner).__name__
+        elif code.co_name.startswith("<"):
+            name = module.rpartition(".")[2]
+        else:
+            name = code.co_name
+        return frame.f_code.co_filename, frame.f_lineno, name, f"{module}:{code.co_qualname}"
 
     @staticmethod
     def _callSite() -> tuple[str, int, str]:

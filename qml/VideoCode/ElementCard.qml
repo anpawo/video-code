@@ -535,7 +535,9 @@ Item {
     // `Square` answers side, fillColor, stroke…, `Video` answers startFrame,
     // endFrame, cuts. Nothing here knows what a video is; the class does.
     readonly property string cls: element !== null && element.cls !== undefined ? element.cls : ""
-    readonly property var arguments: cls.length > 0 ? Shell.inputParams(cls) : []
+    // A template's are asked of the module it lives in — see Main.foldTemplates.
+    readonly property var arguments: cls.length === 0 ? []
+                                     : Shell.inputParams(element.signature !== undefined ? element.signature : cls)
 
     // Whether the line is one this card can safely write to. An element built in
     // a loop, or by a helper, has a line that says where it came from but not a

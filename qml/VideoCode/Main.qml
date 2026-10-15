@@ -1404,6 +1404,7 @@ ApplicationWindow {
             { label: "sound", meaning: "audio on its own" },
             { label: "video", meaning: "a picture with its sound, as one clip" },
             { label: "subs", meaning: "text derived from a track, so it borrows the neutral" },
+            { label: "template", meaning: "one call of the scene that made all of these — its parts fold into it" },
 
             { section: "Now" },
             { label: "live", meaning: "the playhead, and whatever is about to happen" },
@@ -2236,7 +2237,8 @@ ApplicationWindow {
     readonly property var sceneAssets: {
         const out = [];
         const seen = ({});
-        for (const one of shownScene.elements) {
+        // A template's media is in the scene too, folded or not.
+        for (const one of [].concat(...shownScene.elements.map((row) => row.kind === "template" ? row.members : [row]))) {
             if (one.kind !== "video" && one.kind !== "image" && one.kind !== "sound")
                 continue;
             if (seen[one.n] === true)
@@ -2371,8 +2373,13 @@ ApplicationWindow {
                 members: []
             };
 
-            // Same line, same gesture: fold it in rather than adding a row.
-            const key = element.file + ":" + element.line;
+            // Same line, same gesture: fold it in rather than adding a row. The
+            // same line of a template run from two calls is two rows, one in
+            // each call's clip.
+            const made = element.template;
+            if (made !== undefined)
+                one.made = made;
+            const key = (made !== undefined ? app.templateKey(made) + "|" : "") + element.file + ":" + element.line;
             if (element.line > 0 && byLine[key] !== undefined) {
                 const parent = rows[byLine[key]];
                 // The row IS the first part, so it joins the list the first
@@ -2390,7 +2397,87 @@ ApplicationWindow {
             rows.push(one);
         }
 
-        return { fps: fps, duration: model.frames / fps, elements: rows, waits: waits, markers: markers };
+        return { fps: fps, duration: model.frames / fps, elements: app.foldTemplates(rows), waits: waits, markers: markers };
+    }
+
+    // A template call, as a key: the scene's line and the name it called there.
+    function templateKey(made) {
+        return made.file + ":" + made.line + ":" + made.name;
+    }
+
+    // The templates whose parts are drawn under their clip, by name — the
+    // Inspector's "parts" row. Kept for the session, not in the scene: how the
+    // timeline is folded is not part of the film.
+    property var unfolded: ({})
+
+    // ── Templates ─────────────────────────────────────────────────────────
+    // `tutorial(...)` written once in the scene makes a whole video's worth of
+    // clips, from lines of videos/lol/tutorial.py. Drawn as those lines, the
+    // timeline showed the template's insides — Video ×8, Text ×129 — and the
+    // one line the scene actually wrote was nowhere. So a template call is ONE
+    // clip, named after it, spanning everything it made; its rows are its
+    // members. Unfolded, they follow it, a lane each.
+    function foldTemplates(rows) {
+        const out = [];
+        const clips = ({});
+        for (const row of rows) {
+            if (row.made === undefined) {
+                out.push(row);
+                continue;
+            }
+            const key = app.templateKey(row.made);
+            let clip = clips[key];
+            if (clip === undefined) {
+                clip = clips[key] = {
+                    n: labelFor({ line: row.made.line, kind: row.made.name }),
+                    kind: "template",
+                    l: row.l,
+                    d: row.d,
+                    line: row.made.line,
+                    file: row.made.file,
+                    cls: row.made.name,
+                    // Where the template lives, for its signature: the scene
+                    // language does not know `tutorial`, its module does.
+                    signature: row.made.signature,
+                    index: row.index,
+                    flaws: [],
+                    // Its insides' lines are the template's file's, not the
+                    // scene's: nothing here may be read as a line of the scene.
+                    points: [],
+                    effects: [],
+                    members: []
+                };
+                out.push(clip);
+            }
+            clip.members.push(row);
+            clip.flaws = clip.flaws.concat(row.flaws);
+            const end = Math.max(clip.l + clip.d, row.l + row.d);
+            clip.l = Math.min(clip.l, row.l);
+            clip.d = end - clip.l;
+        }
+        return [].concat(...out.map((row) => row.kind === "template" && app.unfolded[row.cls] === true
+                                             ? [row].concat(row.members) : [row]));
+    }
+
+    // The scene the timeline was last built from, so folding a template
+    // redraws it without running the scene again.
+    property var liveModel: null
+    property var liveFlaws: []
+
+    function unfold(element, shown) {
+        const next = Object.assign({}, app.unfolded);
+        next[element.cls] = shown;
+        app.unfolded = next;
+        if (app.liveModel === null)
+            return;
+        liveScene = buildLiveScene(app.liveModel, app.liveFlaws);
+        elementCard.rebind(liveScene.elements);
+        inspector.rebind(liveScene.elements);
+        // The clip stays the one picked: its parts land under it, and every
+        // lane after it moves down by as many.
+        const at = liveScene.elements.findIndex((row) => row.kind === "template" && row.line === element.line && row.cls === element.cls);
+        if (at >= 0)
+            app.selectedIndex = at;
     }
 
     // The message a warning left on one source line, or "".
@@ -2569,7 +2656,9 @@ ApplicationWindow {
     function writeArgument(element, call, name, value) {
         if (element === null || element.line === undefined)
             return false;
-        return app.writeOn(element.line, call, name, value, element.file, element.cls);
+        // A template's signature is found where it lives, not by its name.
+        return app.writeOn(element.line, call, name, value, element.file,
+                           element.signature !== undefined ? element.signature : element.cls);
     }
 
     // The same edit, addressed by line rather than by element: an effect knows
@@ -2777,7 +2866,18 @@ ApplicationWindow {
     // `.wait()` costs a frame more than it says. So the edit is written, the
     // gaps are read again, and what the first of them lost is written back.
     // The several writes are then folded into one, for one ⌘Z.
+    // A template returns whatever its file makes it return — often nothing —
+    // so a `.wait()` or a `hide` written onto its call would break the scene
+    // rather than move it. Its parts are timed by its own values.
+    function templateTimed(element) {
+        return element.n + " is a template — its timing is its own values, in the Inspector";
+    }
+
     function gesture(element, edge, value, push) {
+        if (element.kind === "template") {
+            source.say(app.templateTimed(element));
+            return;
+        }
         const before = source.text;
         const fps = execFps > 0 ? execFps : 30;
         const was = (liveScene.waits !== undefined ? liveScene.waits : [])
@@ -3050,6 +3150,8 @@ ApplicationWindow {
     function planGesture(element, edge, value) {
         if (element === null || element.line === undefined || element.line <= 0)
             return { ok: false, message: "" };
+        if (element.kind === "template")
+            return { ok: false, message: app.templateTimed(element) };
         if (edge === "out")
             return app.planHide(element, value);
         if (edge === "in")
@@ -3593,7 +3695,9 @@ ApplicationWindow {
                     message: w.message
                 };
             });
-            liveScene = buildLiveScene(JSON.parse(answer.scene), flaws);
+            liveModel = JSON.parse(answer.scene);
+            liveFlaws = flaws;
+            liveScene = buildLiveScene(liveModel, flaws);
             // Anything looking at the scene has to be looking at THIS one.
             elementCard.rebind(liveScene.elements);
             inspector.rebind(liveScene.elements);
@@ -4239,6 +4343,9 @@ ApplicationWindow {
         visible: false
         playhead: app.playhead
         buffer: source.text
+        path: source.path
+        unfolded: app.unfolded
+        onPartsShown: (element, shown) => app.unfold(element, shown)
         baseDir: source.path.length > 0 ? source.path.substring(0, source.path.lastIndexOf("/")) : ""
         onArgumentWritten: (element, call, name, value) => app.fromInspector(() => app.writeArgument(element, call, name, value))
         onMetadataAdded: (element, write) => app.fromInspector(() => app.addMetadata(element, write))

@@ -1789,6 +1789,19 @@ Item {
         when: view.contentItem !== null
     }
 
+    // And half a pane past the end of the longest line: its last characters
+    // are read with air after them, and what a gesture says after a line has
+    // somewhere to be seen. A margin for the same reason as the one above —
+    // given as the TextArea's rightPadding, Qt drew the text only across the
+    // part of the viewport the padding did not cover, and every line stopped
+    // halfway across the pane under a blank block.
+    Binding {
+        target: view.contentItem
+        property: "rightMargin"
+        value: view.width / 2
+        when: view.contentItem !== null
+    }
+
     ScrollView {
         id: view
         anchors {
@@ -1817,12 +1830,6 @@ Item {
             // the obvious 8: a number and a letter that nearly touch read as one
             // word, and every editor leaves a hand's breadth there.
             leftPadding: 14
-            // Half a pane past the end of the longest line: its last characters
-            // are read with air after them, and what a gesture says after a
-            // line has somewhere to be seen. Padding, unlike the room under
-            // the text: sideways it breaks nothing, and a press out there
-            // still lands on the end of its line.
-            rightPadding: view.width / 2
             topPadding: 6
             // Code is not prose: a wrapped line lies about where the line ends,
             // and every editor a person has used before this one scrolls instead.
@@ -1837,6 +1844,26 @@ Item {
             selectionColor: Qt.alpha(Theme.ai, 0.35)
             selectedTextColor: Theme.ink
             persistentSelection: true
+
+            // As far right as the pane scrolls: the text, then the room after
+            // the longest line. Not the TextArea's width — the ScrollView sizes
+            // that to the text itself, and a binding written over it was
+            // measured back at the text's own width once the pane had settled.
+            readonly property real reach: width + (view.contentItem as Flickable).rightMargin
+
+            // A press in the room after the longest line is still a press on
+            // its line, and lands on its end, as one right of a short line does.
+            MouseArea {
+                x: editor.width
+                width: editor.reach - editor.width
+                height: editor.height
+                cursorShape: Qt.IBeamCursor
+                onPressed: (mouse) => {
+                    editor.forceActiveFocus();
+                    editor.cursorPosition = editor.positionAt(editor.width, mouse.y);
+                }
+                onPositionChanged: (mouse) => editor.moveCursorSelection(editor.positionAt(editor.width, mouse.y))
+            }
 
             // Which line the caret is on, counted once per move rather than
             // measured from pixels: the highlight and the gutter must agree even
@@ -1856,7 +1883,7 @@ Item {
                     z: -1
                     x: 0
                     y: editor.topPadding + touched.index * gutter.lineHeight
-                    width: editor.width
+                    width: editor.reach
                     height: gutter.lineHeight
                     visible: touched.modelData.kind !== "same"
                     // Tinted rather than solid: a full-strength green under
@@ -1880,7 +1907,7 @@ Item {
                     readonly property rect tail: editor.positionToRectangle(root.offsetOf(modelData.line - 1, modelData.to))
                     z: -1
                     y: editor.topPadding + (modelData.line - 1) * gutter.lineHeight
-                    width: editor.width
+                    width: editor.reach
                     height: gutter.lineHeight
                     color: Qt.alpha(modelData.refused ? Theme.bad : Theme.live, 0.13)
 
@@ -1908,7 +1935,7 @@ Item {
                     readonly property rect end: editor.positionToRectangle(root.offsetOf(modelData.line - 1, 1e6))
                     z: 1
                     y: editor.topPadding + (modelData.line - 1) * gutter.lineHeight
-                    width: editor.width
+                    width: editor.reach
                     height: gutter.lineHeight
 
                     Rectangle {
@@ -1967,7 +1994,7 @@ Item {
                 z: -1
                 x: 0
                 y: editor.cursorRectangle.y
-                width: editor.width
+                width: editor.reach
                 height: editor.cursorRectangle.height
                 color: Theme.codeSkin.band
                 visible: editor.activeFocus
@@ -1982,7 +2009,7 @@ Item {
                 z: -1
                 x: 0
                 y: at.y
-                width: editor.width
+                width: editor.reach
                 height: at.height
                 color: Theme.hover
                 visible: probe.containsMouse && probe.mouseY <= editor.topPadding + editor.contentHeight
