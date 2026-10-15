@@ -48,8 +48,10 @@ table and the reasons:
 - **GitHub Actions**, on every push and pull request: the Python suites,
   pyright, that new public API arrived documented and tested, repetition,
   qmllint, clang-format, the Linux and macOS builds, the C++ unit tests, the
-  QML chrome, and that `eg.py` still renders. A red run means the push already
-  landed — fix it in the next one.
+  QML chrome, that `eg.py` still renders, and that every line a push adds to
+  `videocode/` runs under a test that fails when the line is made wrong
+  (`test/mutants.py`). A red run means the push already landed — fix it in
+  the next one.
 - **`make check`**, when you ask: visual regression, the preview against the
   headless renderer, C++ unit tests, the render digest, and the performance
   guard. It needs this machine's GPU, which is why CI cannot run it, and it
