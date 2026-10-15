@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792068189712,
+  "lastUpdate": 1792068784590,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1380,6 +1380,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/c57840f60d5dc67fa55a2fbee40b73a264e2b4f9"
         },
         "date": 1792068189132,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "91091565+Hip-po@users.noreply.github.com",
+            "name": "hip-po",
+            "username": "Hip-po"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78cce087aa87f4d6b08b3253bd0e22e68cb5896e",
+          "message": "Merge pull request #395 from anpawo/feature/394-agent-model-effort\n\nagent: the model and the effort, picked under the field (#394)",
+          "timestamp": "2026-10-15T14:50:27+02:00",
+          "tree_id": "2d6dccd388c282cfae8fa62fd5006c43d96d20bb",
+          "url": "https://github.com/anpawo/video-code/commit/78cce087aa87f4d6b08b3253bd0e22e68cb5896e"
+        },
+        "date": 1792068783955,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
