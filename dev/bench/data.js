@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792070014988,
+  "lastUpdate": 1792070480197,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1557,6 +1557,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/644a4125a9b493362d95bec257dc982c225b6a5e"
         },
         "date": 1792070014426,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "5c52b441b71bc52f04c9071cf8194d28f544c502",
+          "message": "timeline: zoom out to a quarter of the whole scene (#397)\n\nThe farthest zoom was the whole scene across the pane (100 %, 22 px/s for the\n60 s tutorial scene), edge to edge, which still read as a timeline going on\npast it. The slider now goes on down to a quarter of that: the whole scene in\na quarter of the pane, with the room around it. ⇧Z still goes to 100 %. A\nshort scene, which fits at 25 px/s, stops at a quarter of 25.\n\ntest/template_fold_test.py: the 200 s scene's floor is 1.67 px/s for a fit\nof 6.69; it was the fit itself before.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01SPxsxAbAwXEMCiLh9rgYvS",
+          "timestamp": "2026-10-15T15:18:03+02:00",
+          "tree_id": "38b363db1b7eecc1d6f15a0a253e37985f6c851e",
+          "url": "https://github.com/anpawo/video-code/commit/5c52b441b71bc52f04c9071cf8194d28f544c502"
+        },
+        "date": 1792070479095,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
