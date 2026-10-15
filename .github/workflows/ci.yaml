@@ -27,7 +27,7 @@ jobs:
       # GitHub has no description key for a workflow: its run page shows this.
       - name: What this workflow runs
         run: |
-          echo "On every push and pull request: the Python tests, type-check, API doc and test coverage, repetition and render-digest checks with no build; QML lint; C++ formatting; a Linux build with the full test suite and a showcase render; a macOS build; and the perf history, published from main." >> "$GITHUB_STEP_SUMMARY"
+          echo "On every push and pull request: the Python tests, type-check, API doc and test coverage, repetition and render-digest checks with no build; QML lint; C++ formatting; a Linux build with the full test suite, a showcase render, and a check that every line the push adds to videocode/ runs under a test that fails when the line is made wrong (mutants); a macOS build; and the perf history, published from main." >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4
         with:
@@ -281,12 +281,14 @@ jobs:
 
   # ── lane D: the compiler and everything that needs a binary. ──
   build:
-    name: Linux build, full test suite and showcase render
+    name: Linux build, full suite, showcase render, mutants
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # mutants.py diffs the pushed range
 
       # No ccache. Its gain here was never measured, and it would be a third
       # third-party action on a moving tag. The parallel build below IS
@@ -368,10 +370,13 @@ jobs:
       # have no binary to start. Without it Qt defaults to xcb, finds no display
       # and never comes up — which the tests can only report as "state did not
       # answer within 30 s", 28 times over.
+      # VC_LINECOV records which library lines each test file runs, for the
+      # mutants step at the end of this job.
       - name: Full suite, with every tool present
         env:
           VC_REQUIRE_TOOLS: '1'
           QT_QPA_PLATFORM: offscreen
+          VC_LINECOV: ${{ runner.temp }}/linecov
         run: ./test/run_tests.sh
 
       # eg.py is the living showcase. Counting the frames is the point: the step
@@ -394,3 +399,14 @@ jobs:
           name: eg-render
           path: eg.mp4
           retention-days: 7
+
+      # coverage_check.py asks whether a new public name appears in a test.
+      # This asks whether every line the push adds to videocode/ runs under a
+      # test, and whether a test fails when that line is made wrong. Last, so a
+      # survivor never stops the render above from being checked.
+      - name: New library lines run under a test, and their mutants die
+        env:
+          VC_REQUIRE_TOOLS: '1'
+          QT_QPA_PLATFORM: offscreen
+          BEFORE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 test/mutants.py --here --recorded "$RUNNER_TEMP/linecov" --range "$BEFORE..$GITHUB_SHA"

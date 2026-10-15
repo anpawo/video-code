@@ -19,14 +19,24 @@ failed=0
 passed=0
 failed_files=()
 
+# test/mutants.py needs to know which lines of videocode/ each file runs:
+# VC_LINECOV is the folder test/linecov/sitecustomize.py writes that into.
+if [ -n "${VC_LINECOV:-}" ]; then
+    mkdir -p "$VC_LINECOV"
+    export VC_LINECOV_ROOT="$(pwd -P)"
+    export PYTHONPATH="$VC_LINECOV_ROOT/test/linecov${PYTHONPATH:+:$PYTHONPATH}"
+fi
+
 for f in test/*_test.py; do
     printf "${_CYAN}${_BOLD}━━━  %s  ━━━${_R}\n" "$f"
-    if python3 "$f"; then
+    start=$SECONDS
+    if VC_LINECOV_TEST="$f" python3 "$f"; then
         passed=$((passed + 1))
     else
         failed=$((failed + 1))
         failed_files+=("$f")
     fi
+    [ -z "${VC_LINECOV:-}" ] || echo "$f $((SECONDS - start))" >> "$VC_LINECOV/durations"
     echo
 done
 
