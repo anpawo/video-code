@@ -5,8 +5,9 @@ A template called from the scene is one clip, and the Inspector edits its values
 `titleCard(...)` lives in a file beside the scene and makes a rectangle and a
 word. On the timeline each call is one clip named after it, not the rows of
 titlecard.py's lines; the Inspector shows the template's own parameters, read
-from the call and written back to it; its "parts" row puts the rows under the
-clip again. The same windowless editor also answers two neighbours: the zoom
+from the call and written back to it; its "parts" row opens the clip into a
+block over its rows, where its own call to caption() is a clip, and a block
+of its own once opened too. The same windowless editor also answers two neighbours: the zoom
 reaches the whole of a 200 s scene, and the code pane draws a long line across
 its whole width rather than stopping halfway under a blank block.
 
@@ -39,6 +40,14 @@ shot.close()
 env = {**os.environ, "VC_SOCKET": SOCKET, "VC_DOCK_FILE": dock.name}
 
 ROWS = "JSON.stringify(liveScene.elements.map((r) => [r.n, r.kind, r.members.length]))"
+SHAPE = "JSON.stringify(liveScene.elements.map((r) => [r.n, r.kind, r.depth, r.lanes === undefined || !r.open ? 0 : r.lanes]))"
+
+# Each template block drawn on the timeline: [first lane, lanes covered], the
+# lanes counted from the first block's, which is on the first lane.
+BLOCKS = ("JSON.stringify((function(){ const out = [] ; const walk = (i) => { if (i.outset !== undefined && i.visible)"
+          " out.push([i.y / timeline.laneHeight, Math.round((i.height + 2 + 2 * i.depth) / timeline.laneHeight)]) ;"
+          " for (const c of i.children) walk(c) } ; walk(timeline) ; out.sort((a, b) => a[0] - b[0]) ;"
+          " return out.map((b) => [Math.round(b[0] - out[0][0]), b[1]]) })())")
 
 # The code pane's text, where it sits in the window, and line 6 — the long
 # comment — in the same frame: [paneX, paneWidth, lineY, lineHeight, windowWidth].
@@ -78,7 +87,7 @@ try:
     rows = json.loads(probe(ROWS))
     check(f"two calls, two clips, and the square beside them ({rows})",
           [r[:2] for r in rows] == [["titleCard", "template"], ["titleCard", "template"], ["square", "polygon"]])
-    check("each clip holds the rows of what it made: the rectangle and the word", rows[0][2] == 2 and rows[1][2] == 2)
+    check("each clip holds what it made: the rectangle, and the call that writes the word", rows[0][2] == 2 and rows[1][2] == 2)
 
     section("the Inspector reads its values off the call")
     probe("app.inspect(liveScene.elements[0])")
@@ -92,12 +101,22 @@ try:
     values = json.loads(probe("JSON.stringify(inspector.argRows.map((r) => [r.label, r.value]))"))
     check(f"and by name, on a call that names them ({values})", values == [["title", '"Two"'], ["color", "RED_A"]])
 
-    section("its parts, when asked for")
+    section("its parts, when asked for, in a block")
     probe("inspector.partsShown(inspector.element, true)")
-    rows = json.loads(probe(ROWS))
-    check(f"each clip is followed by its rows ({[r[:2] for r in rows]})",
-          [r[1] for r in rows] == ["template", "polygon", "polygon", "template", "polygon", "polygon", "polygon"])
-    probe("inspector.partsShown(inspector.element, false)")
+    shape = json.loads(probe(SHAPE))
+    check(f"each clip is followed by its rectangle and its own call to caption(), a clip too ({shape})",
+          [r[:2] for r in shape] == [["titleCard", "template"], ["Rectangle", "polygon"], ["caption", "template"],
+                                     ["titleCard", "template"], ["Rectangle", "polygon"], ["caption", "template"], ["square", "polygon"]])
+    check("the block of each covers its own lane and the two inside it", shape[0][3] == 3 and shape[3][3] == 3)
+    check("drawn as one frame per block", json.loads(probe(BLOCKS)) == [[0, 3], [3, 3]])
+
+    probe("app.unfold(liveScene.elements[2], true)")
+    shape = json.loads(probe(SHAPE))
+    check(f"the call inside opens as a block of its own, a level down ({shape})",
+          [r[1:] for r in shape[:4]] == [["template", 0, 4], ["polygon", 1, 0], ["template", 1, 2], ["polygon", 2, 0]])
+    check("framed inside the outer one", json.loads(probe(BLOCKS)) == [[0, 4], [2, 2], [4, 4], [6, 2]])
+    probe("app.unfold(liveScene.elements[2], false)")
+    probe("app.unfold(liveScene.elements[0], false)")
     check("and folded again", len(json.loads(probe(ROWS))) == 3)
 
     section("a gesture on it is refused, and says why")

@@ -720,6 +720,28 @@ Item {
                 ? Math.floor(lanes.mapFromItem(flick, point.position.x, point.position.y).y / root.laneHeight) : -1
         }
 
+        // An unfolded template is a block: one frame from its own clip down
+        // over the lanes of all it made, the templates it calls framed inside.
+        Repeater {
+            model: root.scene.elements.map((row, at) => ({ row: row, at: at })).filter((one) => one.row.open === true)
+
+            Rectangle {
+                required property var modelData
+                readonly property int depth: modelData.row.depth !== undefined ? modelData.row.depth : 0
+                readonly property real outset: Math.max(8 - 3 * depth, 2)
+                x: root.pad + modelData.row.l * root.pxPerSecond - outset
+                y: ruler.height + root.lanesOrder.indexOf(modelData.at) * root.laneHeight + 1
+                width: modelData.row.d * root.pxPerSecond + 2 * outset
+                // A block inside another stops short of its bottom edge, so two
+                // that end on the same lane are still two frames.
+                height: modelData.row.lanes * root.laneHeight - 2 - 2 * depth
+                radius: 8
+                color: Qt.alpha(Theme.kind["template"], 0.12)
+                border.width: 1
+                border.color: Theme.kind["template"]
+            }
+        }
+
         Column {
             id: lanes
             x: root.pad

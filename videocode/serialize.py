@@ -706,8 +706,8 @@ def sceneModel() -> dict:
             "points": points,
         }
         if index in Context.template:
-            at, row, name, signature = Context.template[index]
-            element["template"] = {"file": at, "line": row, "name": name, "signature": signature}
+            element["templates"] = [{"file": at, "line": row, "name": name, "signature": signature}
+                                    for at, row, name, signature in Context.template[index]]
         elements.append(element)
 
     # ── Where the scene's time joins ──────────────────────────────────────

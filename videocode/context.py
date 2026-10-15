@@ -236,11 +236,11 @@ class Context:
 
     # Which call in the scene made each input, when that call is a TEMPLATE —
     # a function or class of another file of the project, `tutorial(...)` from
-    # videos/lol: (scene file, line, name, "module:qualname"). `origin` names
-    # the line inside the template, which is the template's business; the
-    # editor shows the call the scene wrote. Another side table, for the same
-    # reason as `origin`.
-    template: dict[int, tuple[str, int, str, str]] = {}
+    # videos/lol — followed by the template's own calls down to the input:
+    # (file, line, name, "module:qualname") each, the scene's first. `origin`
+    # names the line inside the innermost one; the editor draws each call as a
+    # clip of its own. Another side table, for the same reason as `origin`.
+    template: dict[int, list[tuple[str, int, str, str]]] = {}
 
     # The file `execSource` is running, which is where a template call is
     # written. Empty for a render: only the editor asks which template made what.
@@ -376,34 +376,42 @@ class Context:
                 Context.template[inputIndex] = made
 
     @staticmethod
-    def _templateCall() -> tuple[str, int, str, str] | None:
+    def _templateCall() -> list[tuple[str, int, str, str]] | None:
         """
-        The scene's call that this input was made under, walking out to the
-        scene file: the line there, and the function or class it called — the
-        frame just inside the scene's. None when the scene file is not on the
-        stack at all.
+        The calls this input was made under, from the scene's out to the one
+        that made it: each the file and line it is written at, and the function
+        or class it called. The first is written in the scene; the others are
+        the template's own calls into functions of the project — `footage(...)`
+        inside `tutorial`. None when the scene file is not on the stack at all.
         """
         frame = sys._getframe(2)
-        inner = None
+        # The functions of the project crossed on the way out, innermost first.
+        # An import's own frames (<frozen importlib…>), a dataclass's generated
+        # __init__ (<string>), the library's frames and a comprehension's are
+        # not a call anyone wrote.
+        crossed = []
         while frame is not None and frame.f_code.co_filename != Context.sceneFile:
-            # An import's own frames (<frozen importlib…>) are not a call
-            # anyone wrote.
-            if not frame.f_code.co_filename.startswith("<"):
-                inner = frame
+            code = frame.f_code
+            if not code.co_filename.startswith(("<", _LIBRARY)) and (code.co_name == "<module>" or not code.co_name.startswith("<")):
+                crossed.append(frame)
             frame = frame.f_back
-        if frame is None or inner is None:
+        if frame is None or not crossed:
             return None
 
-        code = inner.f_code
-        owner = inner.f_locals.get("self") if code.co_name == "__init__" else None
-        module = inner.f_globals.get("__name__", "")
-        if owner is not None:
-            name = type(owner).__name__
-        elif code.co_name.startswith("<"):
-            name = module.rpartition(".")[2]
-        else:
-            name = code.co_name
-        return frame.f_code.co_filename, frame.f_lineno, name, f"{module}:{code.co_qualname}"
+        def call(at: Any, inner: Any) -> tuple[str, int, str, str]:
+            code = inner.f_code
+            owner = inner.f_locals.get("self") if code.co_name == "__init__" else None
+            module = inner.f_globals.get("__name__", "")
+            if owner is not None:
+                name = type(owner).__name__
+            elif code.co_name.startswith("<"):
+                name = module.rpartition(".")[2]
+            else:
+                name = code.co_name
+            return at.f_code.co_filename, at.f_lineno, name, f"{module}:{code.co_qualname}"
+
+        outward = [frame] + crossed[::-1]
+        return [call(outward[k], outward[k + 1]) for k in range(len(crossed))]
 
     @staticmethod
     def _callSite() -> tuple[str, int, str]:

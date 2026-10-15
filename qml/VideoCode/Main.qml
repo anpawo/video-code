@@ -2238,7 +2238,7 @@ ApplicationWindow {
         const out = [];
         const seen = ({});
         // A template's media is in the scene too, folded or not.
-        for (const one of [].concat(...shownScene.elements.map((row) => row.kind === "template" ? row.members : [row]))) {
+        for (const one of app.leaves(shownScene.elements)) {
             if (one.kind !== "video" && one.kind !== "image" && one.kind !== "sound")
                 continue;
             if (seen[one.n] === true)
@@ -2270,6 +2270,9 @@ ApplicationWindow {
     // Square(...)` is called `square` everywhere else in their file, so calling
     // it "Square" here would be the tool renaming their work.
     function labelFor(element) {
+        // A line of another file — a template's — is not this text's line.
+        if (element.file !== undefined && element.file.length > 0 && element.file !== source.path)
+            return element.kind;
         const lines = source.text.split("\n");
         const line = element.line >= 1 && element.line <= lines.length
                    ? lines[element.line - 1] : "";
@@ -2376,10 +2379,10 @@ ApplicationWindow {
             // Same line, same gesture: fold it in rather than adding a row. The
             // same line of a template run from two calls is two rows, one in
             // each call's clip.
-            const made = element.template;
+            const made = element.templates;
             if (made !== undefined)
                 one.made = made;
-            const key = (made !== undefined ? app.templateKey(made) + "|" : "") + element.file + ":" + element.line;
+            const key = (made !== undefined ? made.map(app.templateKey).join("|") + "|" : "") + element.file + ":" + element.line;
             if (element.line > 0 && byLine[key] !== undefined) {
                 const parent = rows[byLine[key]];
                 // The row IS the first part, so it joins the list the first
@@ -2416,47 +2419,88 @@ ApplicationWindow {
     // timeline showed the template's insides — Video ×8, Text ×129 — and the
     // one line the scene actually wrote was nowhere. So a template call is ONE
     // clip, named after it, spanning everything it made; its rows are its
-    // members. Unfolded, they follow it, a lane each.
+    // members. The template's own calls — `footage(...)` inside `tutorial` —
+    // are clips of their own among those members. Unfolded, a template is a
+    // block: its clip, then its members, a lane each.
     function foldTemplates(rows) {
+        return app.shownRows(app.foldCalls(rows, 0), 0);
+    }
+
+    // One clip per call at `depth` of the rows' calls, holding the rows made
+    // under it, folded again a level down.
+    function foldCalls(rows, depth) {
         const out = [];
-        const clips = ({});
+        const clips = [];
+        const byKey = ({});
         for (const row of rows) {
-            if (row.made === undefined) {
+            const made = row.made !== undefined && row.made.length > depth ? row.made[depth] : undefined;
+            if (made === undefined) {
                 out.push(row);
                 continue;
             }
-            const key = app.templateKey(row.made);
-            let clip = clips[key];
+            const key = app.templateKey(made);
+            let clip = byKey[key];
             if (clip === undefined) {
-                clip = clips[key] = {
-                    n: labelFor({ line: row.made.line, kind: row.made.name }),
+                clip = byKey[key] = {
+                    n: labelFor({ line: made.line, kind: made.name, file: made.file }),
                     kind: "template",
                     l: row.l,
                     d: row.d,
-                    line: row.made.line,
-                    file: row.made.file,
-                    cls: row.made.name,
+                    line: made.line,
+                    file: made.file,
+                    cls: made.name,
                     // Where the template lives, for its signature: the scene
                     // language does not know `tutorial`, its module does.
-                    signature: row.made.signature,
+                    signature: made.signature,
                     index: row.index,
                     flaws: [],
                     // Its insides' lines are the template's file's, not the
                     // scene's: nothing here may be read as a line of the scene.
                     points: [],
                     effects: [],
+                    parts: [],
                     members: []
                 };
                 out.push(clip);
+                clips.push(clip);
             }
-            clip.members.push(row);
+            clip.parts.push(row);
             clip.flaws = clip.flaws.concat(row.flaws);
             const end = Math.max(clip.l + clip.d, row.l + row.d);
             clip.l = Math.min(clip.l, row.l);
             clip.d = end - clip.l;
         }
-        return [].concat(...out.map((row) => row.kind === "template" && app.unfolded[row.cls] === true
-                                             ? [row].concat(row.members) : [row]));
+        for (const clip of clips) {
+            clip.members = app.foldCalls(clip.parts, depth + 1);
+            delete clip.parts;
+        }
+        return out;
+    }
+
+    // The rows the timeline draws, a lane each. An unfolded template is
+    // followed by its members, and counts the lanes its block covers, its own
+    // included.
+    function shownRows(rows, depth) {
+        const out = [];
+        for (const row of rows) {
+            row.depth = depth;
+            out.push(row);
+            if (row.kind !== "template")
+                continue;
+            row.open = app.unfolded[row.cls] === true;
+            row.lanes = 1;
+            if (!row.open)
+                continue;
+            for (const inside of app.shownRows(row.members, depth + 1))
+                out.push(inside);
+            row.lanes = out.length - out.indexOf(row);
+        }
+        return out;
+    }
+
+    // Every row a template holds, down through the templates it calls.
+    function leaves(rows) {
+        return [].concat(...rows.map((row) => row.kind === "template" ? app.leaves(row.members) : [row]));
     }
 
     // The scene the timeline was last built from, so folding a template
@@ -2475,7 +2519,8 @@ ApplicationWindow {
         inspector.rebind(liveScene.elements);
         // The clip stays the one picked: its parts land under it, and every
         // lane after it moves down by as many.
-        const at = liveScene.elements.findIndex((row) => row.kind === "template" && row.line === element.line && row.cls === element.cls);
+        const at = liveScene.elements.findIndex((row) => row.kind === "template" && row.file === element.file
+                                                         && row.line === element.line && row.cls === element.cls);
         if (at >= 0)
             app.selectedIndex = at;
     }
