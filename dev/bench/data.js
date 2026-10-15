@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792072417903,
+  "lastUpdate": 1792073940872,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1734,6 +1734,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/435bbfe504ccc70be871125e92ca4e6b1bc6795f"
         },
         "date": 1792072415772,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "95285ea16f29a06680bdfa4e8bb05fbf4fa663fd",
+          "message": "test: every pushed line of videocode/ runs under a test, and its mutants die (#400)\n\ncoverage_check.py only asked whether a new public name appears in a test:\na new branch inside an old function, or a line no test runs, passed every\ngate. The Linux build lane now records which library lines each test file\nruns (stdlib sys.monitoring, through a sitecustomize, so the tests'\nsubprocesses and the interpreter inside ./video-code count too), refuses\nan added line that no test runs, and refuses a mutant of an added line\n(comparison, arithmetic, and/or, booleans, numbers) that every test\nrunning it lets through. A line that cannot be held to that says why with\n`# untested: <why>`.\n\nNot in the pre-commit hook: it needs the whole suite, minutes against\nthe hook's 15 s. Locally `python3 test/mutants.py` works in a throwaway\nworktree, never in the shared tree.\n\nMeasured on af63791 (#398): 22 lines of code, 2 run by no test, 13\nmutants killed, 2 survived, all in Context's frame walk, 3 min 44 s.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Bj7KxxnMrCX247AH2mDLBh",
+          "timestamp": "2026-10-15T16:16:55+02:00",
+          "tree_id": "8da4f25ea0685e8f8690d6c1b1a0522f1d346141",
+          "url": "https://github.com/anpawo/video-code/commit/95285ea16f29a06680bdfa4e8bb05fbf4fa663fd"
+        },
+        "date": 1792073939949,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
