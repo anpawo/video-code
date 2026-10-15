@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792068784590,
+  "lastUpdate": 1792069381868,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1439,6 +1439,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/78cce087aa87f4d6b08b3253bd0e22e68cb5896e"
         },
         "date": 1792068783955,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "2cacfcfd33c3b66001986beae12de3438cd32a3c",
+          "message": "preview: a mesh kept across a new renderer takes the new texture (#396)\n\n⌘3 with the editor open killed it with SIGSEGV in vkQueueSubmit, under\nEditor::renderFrame: MoltenVK bound a descriptor set that no longer existed.\n\nA layout switch resizes the Preview, and a new size rebuilds its renderer:\nthe old one's textures are destroyed and every Image/Video is uploaded again,\nunder new sets. Two caches kept the old ones: the scene's meshes of the last\nframe drawn, returned as they were when the frame index has not moved, and\neach shape's own mesh, whose hash leaves the texture out. It went unseen\nwhile the new sets landed at the old addresses, in the same order — which\nthey do until a run rebuilds one clip and its texture is uploaded after the\nothers. Then the switch bound a freed set: the windowless preview went black\nand stayed black, the editor with a window died.\n\nThe scene's cache is dropped with the renderer, and a shape's cached mesh\ntakes the texture it holds now.\n\ntest/editor_preview_resize_test.py now shrinks the clip, runs, and switches\nto Vibe Editing at the same frame: the pane read flat black without this\n(spread 0.0), the clip with it (67.5). 95 test files, 54 scenes unchanged.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01SPxsxAbAwXEMCiLh9rgYvS",
+          "timestamp": "2026-10-15T14:54:46+02:00",
+          "tree_id": "8c1de3ab1493a08a1c7732c63982d1fe7647c8ba",
+          "url": "https://github.com/anpawo/video-code/commit/2cacfcfd33c3b66001986beae12de3438cd32a3c"
+        },
+        "date": 1792069380361,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
