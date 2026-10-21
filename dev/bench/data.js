@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792075767978,
+  "lastUpdate": 1792591790453,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1911,6 +1911,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/ed6d31faf74f8442e41ca6a499263d065ab95ee8"
         },
         "date": 1792075767190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "7cb64003df7599390af71003b5594019934a29da",
+          "message": "ci: the weekly audit runs as a GitHub Action again, on the subscription (#405)\n\nThe claude.ai routine kept its schedule, its five prompt overrides and its\nruns outside the repository. claude-code-action with CLAUDE_CODE_OAUTH_TOKEN\nruns on the same subscription as the routine, so none of what made the\n18/09 workflow heavy comes back: no API key, no protected environment, no\nvalidator.\n\naudit.md now says what the routine's prompt used to override: English, no\nemail, draft pull requests only, earlier claude/audit-* pull requests as its\nmemory, assigned to anpawo. The perf half goes: its trial ended on 16/10 and,\nwith no email, its questions had nowhere to go. The workflow passes no\ngithub_token, so its pull requests come from the Claude GitHub App and CI\nruns on them.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-21T16:07:50+02:00",
+          "tree_id": "0a0d839bfebd84262caf3df9f2116edae2d0b429",
+          "url": "https://github.com/anpawo/video-code/commit/7cb64003df7599390af71003b5594019934a29da"
+        },
+        "date": 1792591789327,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
