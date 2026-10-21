@@ -5,7 +5,7 @@ Three places, split by what each can actually decide. Nothing blocks a push.
 | where | what it checks | when | blocks? |
 |---|---|---|---|
 | **GitHub Actions** | types, the suites, docs/test coverage of new API, qmllint, formatting, the build, the C++ unit tests, the QML chrome, `eg.py` still renders, the bake digest | every push and PR | the run goes red, the push already landed |
-| **the weekly audit** (a Claude Code routine) | two functions doing one job, a public name nothing calls, engine work that moved into a hotter loop | Mondays 08:00 Paris, or by hand | no — at most three draft PRs and one email |
+| **the weekly audit** (`.github/workflows/audit.yaml`, Claude) | two functions doing one job, a public name nothing calls | Mondays 06:00 UTC, or by hand | no: at most three draft PRs |
 | **`make check`** | visual regression, C++ unit tests, bake digest, performance — and RECORDS the timings into `test/perf/history.jsonl` | when you ask for it | no |
 | **`/ship`** | writes the docs, tests and examples a change owes | before committing | no |
 | `.githooks/pre-commit` | what the repo forgot to commit, coverage, types, the QML chrome (~15 s) — armed with `make arm` | on commit, once armed | yes |
@@ -60,26 +60,27 @@ stale — which is the failure mode documentation actually has.
 gate: it records every verbatim clone by the hash of its content in
 `test/repetition.json` and refuses one the record does not know, in the Python,
 the C++, the QML and the GLSL. What it cannot see is two functions doing one job
-with DIFFERENT code. That takes reading, so a Claude Code routine reads — once a
-week, in the cloud, on Marius's subscription: no API key, no GitHub environment,
-nothing in `.github/workflows`.
+with DIFFERENT code. That takes reading, so Claude reads, once a week:
+`.github/workflows/audit.yaml` runs `anthropics/claude-code-action` on Marius's
+subscription (the `CLAUDE_CODE_OAUTH_TOKEN` secret, made by `claude setup-token`),
+not on an API key.
 
-The routine's instructions are `.github/prompts/audit.md`, versioned here so a
-change to them is a commit. It runs the script's `--candidates` and `--list`,
-reads, and for at most three findings either opens a DRAFT pull request on a
-`claude/audit-*` branch — only for a deletion it has run the tests on — or
-leaves the question to the email. Then one email to Marius, and none on a week
-with nothing worth his time. It never pushes to `main` and never merges.
+Its instructions are `.github/prompts/audit.md`, versioned here so a change to
+them is a commit. It runs the script's `--candidates` and `--list`, reads, and
+for at most three findings opens a DRAFT pull request on a `claude/audit-*`
+branch, assigned to Marius, only for a deletion it has run the tests on. Nothing
+else: no email, no issue, and nothing at all on a week with nothing worth his
+time. It never pushes to `main` and never merges. Its pull requests come from
+the Claude GitHub App, so CI runs on them.
 
-It remembers what it has already raised by reading its own past emails, so a
-finding is not proposed twice unless its code changed. Closing a draft PR is
-how a finding is refused.
+It remembers what it has already raised by listing its own `claude/audit-*`
+pull requests, so a finding is not proposed twice unless its code changed.
+Closing a draft PR is how a finding is refused.
 
-The perf half is on a four-week trial from 2026-09-18: if none of its questions
-has led to a row in `test/perf/history.jsonl` by then, delete it from the
-prompt. Until then the `fast` job says the one thing a runner can say about
-speed honestly — `history.py --stale` warns when more than ten engine commits
-have gone unmeasured.
+The perf half was dropped at the end of its trial (2026-09-18 to 2026-10-16):
+with no email, its questions had nowhere to go. The `fast` job says the one
+thing a runner can say about speed honestly: `history.py --stale` warns when
+more than ten engine commits have gone unmeasured.
 
 **Declaring a twin.** Two files alike on purpose go in `test/twins.json`:
 
@@ -91,7 +92,7 @@ have gone unmeasured.
 repeated lines rather than on a new hash — a bug fixed on both sides changes
 the hashes and must stay green — and prints a warning when a clone VANISHES
 from the pair, which is what a fix applied to one side only looks like. The
-routine is told to stay silent on the pair.
+audit is told to stay silent on the pair.
 
 **Accepting a new clone.** The refusal names it — `file:line ↔ file:line (N
 lines)`. If it is deliberate:

@@ -1,0 +1,39 @@
+name: Weekly audit for code to delete
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Claude reads the week's changes for duplicates and dead code
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # No github_token below: the action trades this for the Claude GitHub App's token, whose
+      # pull requests run CI. One opened with GITHUB_TOKEN would run none.
+      id-token: write
+    steps:
+      - name: What this workflow runs
+        run: |
+          echo "Every Monday at 06:00 UTC, and on demand: Claude follows .github/prompts/audit.md, looks for code said twice or used nowhere, and opens at most three draft pull requests that delete it, each one tested first. A week with nothing worth a pull request opens none." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # repetition_check --since reads the last week of history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model claude-sonnet-5
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+          prompt: |
+            Read `.github/prompts/audit.md` in full and follow it exactly.
