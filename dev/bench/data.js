@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792591790453,
+  "lastUpdate": 1792592924142,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -1970,6 +1970,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/7cb64003df7599390af71003b5594019934a29da"
         },
         "date": 1792591789327,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "6719301ad3d637058c753a6c6a06631049dd0a8b",
+          "message": "ci: the perf curve site is deployed by CI, not by GitHub's pages-build-deployment (#407)\n\nGitHub's own Pages build showed in the Actions list as\n`pages-build-deployment`, the one name there that does not say what runs,\nand no setting renames it. Pages now builds from Actions: a `pages` job,\nafter `history` has pushed the curve to gh-pages, deploys that branch on\npushes to main. The branch holds only dev/bench, so dropping the legacy\nbuild's Jekyll pass changes nothing on the site.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-21T16:26:44+02:00",
+          "tree_id": "3af8f63dbba0fb89ad0a42dec6ce8dbdc63112fe",
+          "url": "https://github.com/anpawo/video-code/commit/6719301ad3d637058c753a6c6a06631049dd0a8b"
+        },
+        "date": 1792592923314,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
