@@ -44,8 +44,8 @@ Three things that cost people an afternoon:
 
 ## Check
 
-Nothing blocks a push to a branch. What guards the code is in three places, split by what
-each can actually decide — [docs/WORKFLOWS.md](docs/WORKFLOWS.md) has the
+Nothing blocks a push to a branch. What guards the code is in three places,
+split by what each can actually decide — [docs/WORKFLOWS.md](docs/WORKFLOWS.md) has the
 table and the reasons:
 
 - **GitHub Actions**, on every push and pull request: the Python suites,
