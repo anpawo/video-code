@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: What this workflow runs
         run: |
-          echo "On every pull request into main: Claude follows .github/prompts/review.md, reads the change without running it, comments, and posts the check 'Claude review' that main requires before a merge." >> "$GITHUB_STEP_SUMMARY"
+          echo "On every pull request into main: Claude follows .github/prompts/review.md, reads the change without running it, comments, posts the check 'Claude review' that main requires before a merge, and merges the pull request when it passes, unless it touches .github/." >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4 # main, not the pull request
 
@@ -44,7 +44,7 @@ jobs:
             checks: write
           claude_args: >-
             --model claude-sonnet-5
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api repos/anpawo/video-code/check-runs:*),Bash(git fetch:*),Bash(git show:*),Read,Glob,Grep"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh pr merge:*),Bash(gh api repos/anpawo/video-code/check-runs:*),Bash(git fetch:*),Bash(git show:*),Read,Glob,Grep"
           prompt: |
             Pull request #${{ github.event.pull_request.number }}, head commit ${{ github.event.pull_request.head.sha }}.
             Read `.github/prompts/review.md` in full and follow it exactly.

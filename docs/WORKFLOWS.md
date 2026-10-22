@@ -7,7 +7,7 @@ a branch; `main` only takes pull requests Claude has reviewed
 | where | what it checks | when | blocks? |
 |---|---|---|---|
 | **GitHub Actions** | types, the suites, docs/test coverage of new API, qmllint, formatting, the build, the C++ unit tests, the QML chrome, `eg.py` still renders, the bake digest | every push and PR | the run goes red, the push already landed |
-| **the review** (`.github/workflows/review.yaml`, Claude) | a bug it can point to, a weakened test, a secret, code reaching for credentials | every pull request into `main` | yes: `main` merges nothing without its check |
+| **the review** (`.github/workflows/review.yaml`, Claude) | a bug it can point to, a weakened test, a secret, code reaching for credentials | every pull request into `main` | yes: `main` merges nothing without its check, and Claude merges what passes |
 | **the weekly audit** (`.github/workflows/audit.yaml`, Claude) | two functions doing one job, a public name nothing calls | Mondays 06:00 UTC, or by hand | no: at most three draft PRs |
 | **`make check`** | visual regression, C++ unit tests, bake digest, performance — and RECORDS the timings into `test/perf/history.jsonl` | when you ask for it | no |
 | **`/ship`** | writes the docs, tests and examples a change owes | before committing | no |
@@ -70,10 +70,12 @@ lets it merge once two things hold.
   reaching for credentials, a change its description does not say), comments
   on the rest, and posts the check. The ruleset accepts that check only from
   the Claude GitHub App, so no workflow can post it in its place. Each push to
-  the pull request is reviewed again.
+  the pull request is reviewed again. When the check passes, Claude merges the
+  pull request itself, with a merge commit.
 - **A change under `.github/` has Marius's approval** (`.github/CODEOWNERS`).
 
-Marius and the Claude GitHub App bypass both.
+Marius bypasses both. The Claude GitHub App does not: its merges go through
+the same gate, so no pull request can talk it into merging a `.github/` change.
 
 Why: the Claude token runs on Marius's subscription, and a repository secret
 reaches any workflow that anyone with write access writes, on any branch. The
