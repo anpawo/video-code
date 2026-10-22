@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792669558408,
+  "lastUpdate": 1792672721363,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -2147,6 +2147,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/c2183d14edf7982d376ee32ae2c8ff02018da2dc"
         },
         "date": 1792669557983,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "29c8b60ef5c0708037f33ec2029e8347c4af023b",
+          "message": "ci: Claude reviews and never merges; its commands run without the Claude token (#408)\n\nMarius reversed the merge step: people merge, once Claude's check is green\nand nothing under .github/ changed. The review's app token now asks for\ncontents: read, so it cannot merge or push whatever a pull request asks of\nClaude.\n\nBoth Claude jobs set CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: the commands Claude\nruns, the audit's tests included, get no Claude token in their environment\nand run apart from Claude's process. That is the path left to the token\nonce main is gated: code merged into main runs in the Monday audit, and a\npull request can try to talk the review into printing it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-22T14:37:05+02:00",
+          "tree_id": "8498691529787873a20859bc51fe4112e3fdaa0a",
+          "url": "https://github.com/anpawo/video-code/commit/29c8b60ef5c0708037f33ec2029e8347c4af023b"
+        },
+        "date": 1792672720782,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
