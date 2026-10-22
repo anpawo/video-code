@@ -10,6 +10,7 @@ jobs:
     name: Claude reads the week's changes for duplicates and dead code
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: claude # the token, which only main can use
     permissions:
       contents: read
       # No github_token below: the action trades this for the Claude GitHub App's token, whose

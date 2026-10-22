@@ -1,10 +1,13 @@
 # What guards the repo
 
-Three places, split by what each can actually decide. Nothing blocks a push.
+Three places, split by what each can actually decide. Nothing blocks a push to
+a branch; `main` only takes pull requests Claude has reviewed
+([below](#main-takes-pull-requests)).
 
 | where | what it checks | when | blocks? |
 |---|---|---|---|
 | **GitHub Actions** | types, the suites, docs/test coverage of new API, qmllint, formatting, the build, the C++ unit tests, the QML chrome, `eg.py` still renders, the bake digest | every push and PR | the run goes red, the push already landed |
+| **the review** (`.github/workflows/review.yaml`, Claude) | a bug it can point to, a weakened test, a secret, code reaching for credentials | every pull request into `main` | yes: `main` merges nothing without its check |
 | **the weekly audit** (`.github/workflows/audit.yaml`, Claude) | two functions doing one job, a public name nothing calls | Mondays 06:00 UTC, or by hand | no: at most three draft PRs |
 | **`make check`** | visual regression, C++ unit tests, bake digest, performance — and RECORDS the timings into `test/perf/history.jsonl` | when you ask for it | no |
 | **`/ship`** | writes the docs, tests and examples a change owes | before committing | no |
@@ -54,6 +57,29 @@ The build job now renders `eg.py` too. That file is the living showcase of every
 feature worth seeing, so if it stops rendering, an example in the docs has gone
 stale — which is the failure mode documentation actually has.
 
+## main takes pull requests
+
+Since 2026-10-22 ([#408](https://github.com/anpawo/Video-Code/issues/408)) nobody
+pushes to `main`: a change arrives as a pull request, and the ruleset `main`
+lets it merge once two things hold.
+
+- **The check `Claude review` is green.** `.github/workflows/review.yaml` runs
+  on every pull request into `main` that is not a draft and follows
+  `.github/prompts/review.md`: Claude reads the diff without running it, fails
+  it only for something it can point to (a bug, a weakened test, a secret, code
+  reaching for credentials, a change its description does not say), comments
+  on the rest, and posts the check. The ruleset accepts that check only from
+  the Claude GitHub App, so no workflow can post it in its place. Each push to
+  the pull request is reviewed again.
+- **A change under `.github/` has Marius's approval** (`.github/CODEOWNERS`).
+
+Marius and the Claude GitHub App bypass both.
+
+Why: the Claude token runs on Marius's subscription, and a repository secret
+reaches any workflow that anyone with write access writes, on any branch. The
+token now lives in the environment `claude`, which only a job running on `main`
+can open, and `main`'s workflows only change with his approval.
+
 ## The weekly audit
 
 `test/repetition_check.py`, in the `fast` job and in the pre-commit hook, is the
@@ -62,7 +88,8 @@ gate: it records every verbatim clone by the hash of its content in
 the C++, the QML and the GLSL. What it cannot see is two functions doing one job
 with DIFFERENT code. That takes reading, so Claude reads, once a week:
 `.github/workflows/audit.yaml` runs `anthropics/claude-code-action` on Marius's
-subscription (the `CLAUDE_CODE_OAUTH_TOKEN` secret, made by `claude setup-token`),
+subscription (the `CLAUDE_CODE_OAUTH_TOKEN` secret of the `claude` environment,
+made by `claude setup-token`),
 not on an API key.
 
 Its instructions are `.github/prompts/audit.md`, versioned here so a change to

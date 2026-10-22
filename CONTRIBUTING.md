@@ -13,7 +13,9 @@ is a good model. Labels say the area: `python-API`, `editor`, `timeline`,
 
 Work on a branch named after it — `feature/389-agent-resume`, `ci/381-…` — and
 merge through a pull request that says `Closes #N`. Pull requests are merged
-with a merge commit.
+with a merge commit. `main` refuses a direct push: a pull request merges once
+the `Claude review` check is green, and a change under `.github/` also needs
+Marius's approval ([docs/WORKFLOWS.md](docs/WORKFLOWS.md#main-takes-pull-requests)).
 
 ## Build
 
@@ -41,7 +43,7 @@ Three things that cost people an afternoon:
 
 ## Check
 
-Nothing blocks a push. What guards the repo is in three places, split by what
+Nothing blocks a push to a branch. What guards the code is in three places, split by what
 each can actually decide — [docs/WORKFLOWS.md](docs/WORKFLOWS.md) has the
 table and the reasons:
 
@@ -59,7 +61,7 @@ table and the reasons:
   the change it measured.
 - **The pre-commit hook**, once armed with `make arm` (~15 s): what the
   repository forgot to commit, coverage, types, formatting, the QML chrome,
-  repetition and the render digest. It is the only one that refuses.
+  repetition and the render digest. It is the only one of the three that refuses.
 
 The pieces, to run one at a time:
 
