@@ -1,0 +1,25 @@
+name: Pull request into main, waiting for the Claude review
+
+# Starts the review (review.yaml), which runs from main once this run completes. It holds no
+# token and runs nothing of the pull request's: a pull request that changes it changes only
+# whether its own review starts.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  request:
+    name: Claude review requested
+    # A stranger's pull request would spend Marius's subscription, and Claude's own audit
+    # pull requests are read by Marius.
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.user.type != 'Bot' &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Claude reviews pull request #${{ github.event.pull_request.number }} in the run of 'Claude review of pull requests into main' this one starts." >> "$GITHUB_STEP_SUMMARY"
