@@ -91,6 +91,14 @@ cannot run on `pull_request_target`, which would have needed one workflow:
 Anthropic's token exchange refuses that event
 ([claude-code-action#713](https://github.com/anthropics/claude-code-action/issues/713)).
 
+The mirror's SSH key is kept the same way since
+[#413](https://github.com/anpawo/Video-Code/issues/413): on every push,
+`.github/workflows/cd-mirror.yaml` runs with no secret and starts
+`.github/workflows/mirror.yaml` from `main`, which opens the environment `mirror`
+and pushes every branch and tag to the Epitech copy. The key is one of Marius's
+account used for nothing else: Epitech gives no admin on its copy, so no deploy
+key.
+
 ## The weekly audit
 
 `test/repetition_check.py`, in the `fast` job and in the pre-commit hook, is the

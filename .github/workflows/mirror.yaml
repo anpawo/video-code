@@ -1,0 +1,43 @@
+name: Push every branch to the Epitech repository, from main
+
+# Started by cd-mirror.yaml on every push and every new pull request, it runs
+# this file as main has it: the key is in the environment `mirror`, which only
+# main can open, so a workflow pushed on a branch cannot read it.
+on:
+  workflow_run:
+    workflows: ['Mirror to the Epitech repository']
+    types: [requested]
+
+jobs:
+  mirror:
+    name: Push every branch and tag to the Epitech copy
+    runs-on: ubuntu-latest
+    # Not from the copy itself, where this file also lives.
+    if: github.repository != 'EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset'
+    environment: mirror
+    permissions:
+      contents: read
+    steps:
+      - name: What this workflow runs
+        run: |
+          echo "On every push and every new pull request: pushes every branch and tag to EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset, the copy of this repository that Epitech grades the EIP from." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Plain git rather than a third-party action: the key is read by one shell
+      # step on GitHub's own runner, and by nothing else. It is a key of Marius's
+      # account used for nothing else: Epitech gives no admin on its copy, so no
+      # deploy key.
+      - name: Push every branch and tag
+        env:
+          KEY: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/mirror
+          chmod 600 ~/.ssh/mirror
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND='ssh -i ~/.ssh/mirror -o IdentitiesOnly=yes'
+          git push --force --prune git@github.com:EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset.git \
+            'refs/remotes/origin/*:refs/heads/*' 'refs/tags/*:refs/tags/*'

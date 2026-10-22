@@ -1,7 +1,11 @@
 name: Mirror to the Epitech repository
 
 # Epitech grades the EIP from its own copy of this repository. Every push here
-# is replayed there, branches and tags alike.
+# is replayed there, branches and tags alike, by mirror.yaml, which this run
+# starts and which runs from main: the key lives in the environment `mirror`,
+# which only main can open. This file holds nothing and keeps its old name, which
+# mirror.yaml listens for: a branch that still has the old version of this file
+# starts the mirror too.
 
 on:
   push:
@@ -10,31 +14,14 @@ on:
     types: [opened]
     branches-ignore: ['ga-ignore-**']
 
+permissions: {}
+
 jobs:
-  mirror:
-    name: Push every branch and tag to the Epitech copy
+  request:
+    name: Mirror requested
     runs-on: ubuntu-latest
     # Not from the copy itself, where this file also lives.
     if: github.repository != 'EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset'
     steps:
-      - name: What this workflow runs
-        run: |
-          echo "On every push and every new pull request: pushes every branch and tag to EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset, the copy of this repository that Epitech grades the EIP from." >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Plain git rather than a third-party action: the deploy key is read by
-      # one shell step on GitHub's own runner, and by nothing else.
-      - name: Push every branch and tag
-        env:
-          KEY: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/mirror
-          chmod 600 ~/.ssh/mirror
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND='ssh -i ~/.ssh/mirror -o IdentitiesOnly=yes'
-          git push --force --prune git@github.com:EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset.git \
-            'refs/remotes/origin/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
+      - run: |
+          echo "The push to EpitechPromo2027/G-EIP-600-PAR-6-1-eip-marius.rousset runs in 'Push every branch to the Epitech repository, from main', which this run starts." >> "$GITHUB_STEP_SUMMARY"
