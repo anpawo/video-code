@@ -33,7 +33,7 @@ from videocode.shader.vertexShader.pinToFrame import pinToFrame as _pinToFrameSh
 from videocode.input.media.TrackedPath import TrackedPath
 from videocode.utils.bezier import animate, Easing, easing
 from videocode.utils.logger import *
-from videocode.utils.classutils import At, AttributeNameReference, EaseAttributeSimplifier, _Over
+from videocode.utils.classutils import At, AttributeNameReference, _Over
 
 
 
@@ -415,9 +415,6 @@ class Input(ABC):
         Will be overriden by Interfaces.
         """
         func(self)
-
-    def __call__(self) -> EaseAttributeSimplifier[Self]:
-        return EaseAttributeSimplifier(self)
 
     def ease(
         self,

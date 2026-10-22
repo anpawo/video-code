@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, Self, cast, overload
 from typing_extensions import TypeVar
 from videocode.constants import DEBUG, SINGLE_FRAME
 from videocode.ty import frame, maybe
-from videocode.utils.bezier import Easing, easing
 
 if TYPE_CHECKING:
     from videocode.ty import sec
@@ -26,34 +25,6 @@ class AttributeNameReference:
 
     def __getattribute__(self, name: str) -> str:
         return name
-
-
-class EaseAttributeSimplifier[T: Input]:
-    """
-    Ease an attribute without passing its name as a string.
-
-    `rect().fillColor.easeTo(RED_B)` instead of `rect.ease("fillColor", RED_B)`.
-    Returned by `Input.__call__`.
-    """
-
-    def __init__(self, input: T) -> None:
-        self._input = input
-        self._attr: str
-
-    def __getattr__(self, name: str) -> Self:
-        self._attr = name
-        return self
-
-    def easeTo(
-        self,
-        value: Any,
-        *,
-        easing=Easing.InOut,
-        start: sec = 0,
-        duration: sec = 0.4,
-        offset: maybe[frame] = None,
-    ) -> T:
-        return self._input.ease(self._attr, value, easing=easing, start=start, duration=duration, offset=offset)
 
 
 _MAYBE_T_VAL = TypeVar("_MAYBE_T_VAL")
