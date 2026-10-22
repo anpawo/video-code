@@ -212,6 +212,8 @@ namespace
         {"effect-templates2", "test/visual/scenes/effect_templates2.py", {0, 7, 15, 29}},
         {"effect-shaders3", "test/visual/scenes/effect_shaders3.py", {0}},
         {"effect-templates3", "test/visual/scenes/effect_templates3.py", {0, 7, 15, 29}},
+        {"montage-camera", "test/visual/scenes/montage_camera.py", {0, 7, 15, 29}},
+        {"montage-grade", "test/visual/scenes/montage_grade.py", {0, 7, 15, 29}},
         {"effect-shaders4", "test/visual/scenes/effect_shaders4.py", {0}},
         {"effect-shaders5", "test/visual/scenes/effect_shaders5.py", {0}},
         {"effect-shaders6", "test/visual/scenes/effect_shaders6.py", {0}},

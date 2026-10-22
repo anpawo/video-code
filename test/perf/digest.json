@@ -314,6 +314,24 @@
   "lastFrame": 1,
   "shape": "247a35d291e11c1a"
  },
+ "test/visual/scenes/montage_camera.py": {
+  "applyCalls": 257,
+  "entries": 267,
+  "events": 0,
+  "frameSlots": 166,
+  "inputs": 6,
+  "lastFrame": 31,
+  "shape": "91147f4283b8c0e2"
+ },
+ "test/visual/scenes/montage_grade.py": {
+  "applyCalls": 164,
+  "entries": 176,
+  "events": 0,
+  "frameSlots": 164,
+  "inputs": 6,
+  "lastFrame": 30,
+  "shape": "eb02b66e4cfb0c09"
+ },
  "test/visual/scenes/reload_a.py": {
   "applyCalls": 34,
   "entries": 38,
