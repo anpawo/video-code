@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792665901310,
+  "lastUpdate": 1792669558408,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -2088,6 +2088,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/807fb9b0080fd0d9c5cfd97bc3de7e7d3f172da9"
         },
         "date": 1792665900290,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "c2183d14edf7982d376ee32ae2c8ff02018da2dc",
+          "message": "ci: Claude merges the pull requests its review passes, through the same gate (#408)\n\nMarius wants the review to merge what it judges worth it. After posting a\ngreen `Claude review` check, Claude merges with a merge commit, and leaves\nopen a pull request that touches .github/ or asks to wait.\n\nThe Claude GitHub App is off the ruleset's bypass list: with it, a pull\nrequest that talked Claude into merging could have landed a .github change\nwithout Marius. Nothing it does needed the bypass: the audit pushes to\nclaude/audit-* branches only.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-22T13:43:55+02:00",
+          "tree_id": "5a9a0dbc8cd7c6ab0beb316dbdc113acc8e53bda",
+          "url": "https://github.com/anpawo/video-code/commit/c2183d14edf7982d376ee32ae2c8ff02018da2dc"
+        },
+        "date": 1792669557983,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
