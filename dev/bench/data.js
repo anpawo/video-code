@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792677828220,
+  "lastUpdate": 1792699508232,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -2265,6 +2265,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/e4dd5986480aa9882fc10626cdd99496c1e7a10f"
         },
         "date": 1792677827359,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "50e4eeb2fc22282bd701336c38fc75a242c7cc15",
+          "message": "ci: the mirror's key only opens from main, and is a key of its own (#413)\n\nGIT_SSH_PRIVATE_KEY was a repository secret, readable by any workflow pushed on\nany branch, and held the key of Marius's old Asus laptop, which opens every\nrepository he can push to. A new key, used for nothing else, now lives in the\nenvironment `mirror`, which only main can open: cd-mirror.yaml runs on every push\nwith no secret and starts mirror.yaml from main, which pushes. cd-mirror.yaml\nkeeps its name so a branch with its old version still starts the mirror.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-22T20:56:42+02:00",
+          "tree_id": "f824ec80e4c6e09fccaef66986f3e3baeddfabb3",
+          "url": "https://github.com/anpawo/video-code/commit/50e4eeb2fc22282bd701336c38fc75a242c7cc15"
+        },
+        "date": 1792699507298,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
