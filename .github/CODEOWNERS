@@ -1,3 +1,4 @@
 # The workflows and their prompts decide what runs with the Claude token (environment
-# `claude`), so a change to them needs Marius's approval. The ruleset on main enforces it.
+# `claude`), so a change to them needs Marius's approval. The ruleset on main enforces it
+# (docs/WORKFLOWS.md#main-takes-pull-requests).
 /.github/ @anpawo
