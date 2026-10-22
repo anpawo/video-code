@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792592924142,
+  "lastUpdate": 1792665901310,
   "repoUrl": "https://github.com/anpawo/video-code",
   "entries": {
     "Benchmark": [
@@ -2029,6 +2029,65 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/anpawo/video-code/commit/6719301ad3d637058c753a6c6a06631049dd0a8b"
         },
         "date": 1792592923314,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bake/applyCalls",
+            "value": 21767,
+            "unit": "count"
+          },
+          {
+            "name": "bake/entries",
+            "value": 18980,
+            "unit": "count"
+          },
+          {
+            "name": "bake/inputs",
+            "value": 564,
+            "unit": "count"
+          },
+          {
+            "name": "render/msPerFrame",
+            "value": 6.5429,
+            "unit": "ms"
+          },
+          {
+            "name": "render/total",
+            "value": 2.4732,
+            "unit": "s"
+          },
+          {
+            "name": "render/load",
+            "value": 0.5103,
+            "unit": "s"
+          },
+          {
+            "name": "render/peakRss",
+            "value": 461.2031,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "committer": {
+            "email": "rousset.marius13@gmail.com",
+            "name": "marius rousset",
+            "username": "anpawo"
+          },
+          "distinct": true,
+          "id": "807fb9b0080fd0d9c5cfd97bc3de7e7d3f172da9",
+          "message": "ci: main only takes pull requests Claude has reviewed; .github only changes through Marius (#408)\n\nThe Claude token was a repository secret, and a repository secret reaches\nany workflow that anyone with write access writes, on any branch. The old\ntoken is revoked. The new one goes in the environment `claude`, which only\na job running on main can open, and main's workflows now only change with\nMarius's approval (.github/CODEOWNERS, enforced by the ruleset `main`).\n\nreview.yaml runs on pull_request_target, so the file that holds the token\nis always main's, and it never checks out the pull request's code: Claude\nreads the diff through gh and git, comments, and posts the check\n`Claude review` with the Claude GitHub App's token. The ruleset requires\nthat check from that app, so no workflow token can post it instead.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0186gMvnTegkhL92eaHC5dNT",
+          "timestamp": "2026-10-22T12:43:09+02:00",
+          "tree_id": "fe763bced673034f202b62d2eb9576dcae9cd1ef",
+          "url": "https://github.com/anpawo/video-code/commit/807fb9b0080fd0d9c5cfd97bc3de7e7d3f172da9"
+        },
+        "date": 1792665900290,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
