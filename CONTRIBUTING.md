@@ -8,8 +8,10 @@ The long forms are linked, not copied, so that there is one place to keep right.
 Every change starts as a GitHub issue, and every commit names it. The body is
 a `## What` followed by a few bullets: what is wrong or missing, what "done"
 looks like, and how a test will show it. [#389](https://github.com/anpawo/Video-Code/issues/389)
-is a good model. Labels say the area: `python-API`, `editor`, `timeline`,
-`vulkan-engine`, `ai-agent`, `doc`, `ci-cd`, `bug`, `feature`…
+is a good model. Labels say the area: `python-API`, `effect`, `input`,
+`editor`, `timeline`, `vulkan-engine`, `ai-agent`, `doc`, `ci-cd`, `bug`,
+`feature`… — and `good-first-issue` marks the ones a newcomer can finish
+without knowing the rest of the code ([below](#your-first-contribution)).
 
 Work on a branch named after it — `feature/389-agent-resume`, `ci/381-…` — and
 merge through a pull request that says `Closes #N`. Pull requests are merged
@@ -17,6 +19,31 @@ with a merge commit. `main` refuses a direct push: Claude reviews every pull
 request into it, you merge once its `Claude review` check is green, and a
 change under `.github/` waits for Marius's approval
 ([docs/WORKFLOWS.md](docs/WORKFLOWS.md#main-takes-pull-requests)).
+
+## Your first contribution
+
+The issues labelled
+[`good-first-issue`](https://github.com/anpawo/Video-Code/issues?q=is%3Aissue%20state%3Aopen%20label%3Agood-first-issue)
+are small, touch few files, and say in a `## How` which file to start from.
+Most of them add one thing next to many of its kind, so the closest existing
+one is the model:
+
+| Kind | What you write | Read first |
+|---|---|---|
+| Effect template — `blink()`, `popOut()`, `wave()` | One Python file in `videocode/template/effect/other/`. No rebuild. | [docs/ADDING_EFFECTS.md](docs/ADDING_EFFECTS.md), part A |
+| Fragment shader — `threshold()`, `tint()`, `edges()` | A `frag.glsl`, one line in `include/shader/ShaderFactory.hpp`, one Python class. | [docs/ADDING_EFFECTS.md](docs/ADDING_EFFECTS.md), part B and its traps |
+| Math shader — `checker()`, `stripes()` | A GLSL file in `assets/mathshaders/` and a Python preset. No C++. | the "Procedural content" contract in the same page |
+| Easing, shape template — `Easing.InOutSine`, `Star()` | A few lines in `videocode/utils/bezier.py` or one file in `videocode/template/input/`. | the neighbouring easings and templates |
+| Docs | A translation, an example scene. | — |
+
+Every one of them is done when the new name has a docstring, a row in
+`docs/FEATURES.md` and a check in `test/` (`python3 test/coverage_check.py`
+says what is missing) and the [checks](#check) pass. To take one, say so in
+a comment on the issue so that two people do not write the same effect. If an
+issue is not clear, ask there too — that is a fault of the issue, not yours.
+
+An idea for an effect that has no issue yet is welcome: open the issue first,
+with its `## What`.
 
 ## Build
 
