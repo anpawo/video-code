@@ -1,26 +1,23 @@
 name: Claude review of pull requests into main
 
-# pull_request_target runs this file as main has it, never as the pull request has it: that
-# is what keeps the token out of a pull request's reach. So nothing below may check out, build
-# or run the pull request's code. Claude reads it through gh and git only.
+# Started by review-request.yaml, it runs this file as main has it, never as the pull request has
+# it: that is what keeps the token out of a pull request's reach. So nothing below may check out,
+# build or run the pull request's code. Claude reads it through gh and git only.
+# Not pull_request_target: Anthropic's token exchange refuses that event ("Invalid OIDC token",
+# anthropics/claude-code-action#713).
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches: [main]
+  workflow_run:
+    workflows: ['Pull request into main, waiting for the Claude review']
+    types: [completed]
 
 concurrency:
-  group: review-${{ github.event.pull_request.number }}
+  group: review-${{ github.event.workflow_run.pull_requests[0].number }}
   cancel-in-progress: true
 
 jobs:
   review:
     name: Claude reads the pull request
-    # A stranger's pull request would spend Marius's subscription, and Claude's own audit
-    # pull requests are read by Marius.
-    if: >-
-      !github.event.pull_request.draft &&
-      github.event.pull_request.user.type != 'Bot' &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: claude
@@ -39,6 +36,11 @@ jobs:
 
       - uses: actions/checkout@v4 # main, not the pull request
 
+      - name: Bubblewrap, which the scrub above needs
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends bubblewrap socat
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0; fi
+
       - uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -52,5 +54,5 @@ jobs:
             --model claude-sonnet-5
             --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api repos/anpawo/video-code/check-runs:*),Bash(git fetch:*),Bash(git show:*),Read,Glob,Grep"
           prompt: |
-            Pull request #${{ github.event.pull_request.number }}, head commit ${{ github.event.pull_request.head.sha }}.
+            Pull request #${{ github.event.workflow_run.pull_requests[0].number }}, head commit ${{ github.event.workflow_run.head_sha }}.
             Read `.github/prompts/review.md` in full and follow it exactly.

@@ -63,8 +63,9 @@ Since 2026-10-22 ([#408](https://github.com/anpawo/Video-Code/issues/408)) nobod
 pushes to `main`: a change arrives as a pull request, and the ruleset `main`
 lets it merge once two things hold.
 
-- **The check `Claude review` is green.** `.github/workflows/review.yaml` runs
-  on every pull request into `main` that is not a draft and follows
+- **The check `Claude review` is green.** On every pull request into `main`
+  that is not a draft, `.github/workflows/review-request.yaml` runs with no
+  token and starts `.github/workflows/review.yaml` from `main`, which follows
   `.github/prompts/review.md`: Claude reads the diff without running it, fails
   it only for something it can point to (a bug, a weakened test, a secret, code
   reaching for credentials, a change its description does not say), comments
@@ -76,7 +77,8 @@ lets it merge once two things hold.
 
 Marius bypasses both.
 
-Both Claude jobs set `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`: the commands Claude
+Both Claude jobs set `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` and install bubblewrap,
+without which Claude Code refuses to start with it: the commands Claude
 runs (the audit's tests included) get no Claude token in their environment and
 run apart from Claude's process. The action calls it best-effort: it narrows
 what a prompt injection or a hostile test can reach, it does not close it.
@@ -84,7 +86,10 @@ what a prompt injection or a hostile test can reach, it does not close it.
 Why: the Claude token runs on Marius's subscription, and a repository secret
 reaches any workflow that anyone with write access writes, on any branch. The
 token now lives in the environment `claude`, which only a job running on `main`
-can open, and `main`'s workflows only change with his approval.
+can open, and `main`'s workflows only change with his approval. The review
+cannot run on `pull_request_target`, which would have needed one workflow:
+Anthropic's token exchange refuses that event
+([claude-code-action#713](https://github.com/anthropics/claude-code-action/issues/713)).
 
 ## The weekly audit
 
