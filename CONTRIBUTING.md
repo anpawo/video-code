@@ -14,8 +14,9 @@ is a good model. Labels say the area: `python-API`, `editor`, `timeline`,
 Work on a branch named after it — `feature/389-agent-resume`, `ci/381-…` — and
 merge through a pull request that says `Closes #N`. Pull requests are merged
 with a merge commit. `main` refuses a direct push: Claude reviews every pull
-request into it and merges the ones that pass, and a change under `.github/`
-waits for Marius's approval ([docs/WORKFLOWS.md](docs/WORKFLOWS.md#main-takes-pull-requests)).
+request into it, you merge once its `Claude review` check is green, and a
+change under `.github/` waits for Marius's approval
+([docs/WORKFLOWS.md](docs/WORKFLOWS.md#main-takes-pull-requests)).
 
 ## Build
 

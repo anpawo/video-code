@@ -59,9 +59,5 @@ gh api repos/anpawo/video-code/check-runs -f name='Claude review' -f head_sha=<h
   -f 'output[title]=<the verdict in one line>' -f 'output[summary]=<the findings>'
 ```
 
-Post the check in every case: without it the pull request cannot merge.
-
-3. When the check is `success`, merge it yourself with a merge commit:
-   `gh pr merge <N> --merge`. Leave it open when it changes anything under
-   `.github/` (Marius merges those, and GitHub refuses yours) or when its
-   description asks to wait.
+Post the check in every case, last: without it the pull request cannot merge.
+You never merge: a person does, once your check is green.

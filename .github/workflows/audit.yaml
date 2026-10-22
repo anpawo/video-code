@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: claude # the token, which only main can use
+    env:
+      # The tests and scripts Claude runs are the repository's code: they run without the
+      # Claude token in their environment, apart from Claude's process. GitHub tokens stay.
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
     permissions:
       contents: read
       # No github_token below: the action trades this for the Claude GitHub App's token, whose
