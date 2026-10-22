@@ -1,0 +1,16 @@
+name: Probe of the code-owner rule (test, #408)
+
+# Opens a pull request into main from this branch as github-actions[bot], so that its author
+# is not the code owner of .github/.
+on: push
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - run: gh pr create -R "$GITHUB_REPOSITORY" --base main --head "$GITHUB_REF_NAME" --title 'test: code-owner rule probe (#408)' --body 'Opened by a workflow to see whether a change under .github/ waits for the code owner. Closed without merging.'
+        env:
+          GH_TOKEN: ${{ github.token }}
