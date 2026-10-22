@@ -1,6 +1,7 @@
 name: Release archives (Linux, macOS)
 
-# Both zips, on every push, replacing the assets of the current release.
+# Both zips, on every push to main, replacing the assets of the current release.
+# Not on other branches: what people download is what was reviewed and merged.
 #
 # The Mac zip used to be built by hand on the author's Mac and the Linux one
 # could not be built there at all. Now neither is: each is built on a machine
@@ -13,7 +14,7 @@ name: Release archives (Linux, macOS)
 
 on:
   push:
-    branches-ignore: ['ga-ignore-**']
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
