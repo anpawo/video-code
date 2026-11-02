@@ -51,10 +51,10 @@ FRAMERATE = 30
 SINGLE_FRAME = SF = FRAME_TO_SEC = 1 / FRAMERATE
 
 # Reserved zIndex sentinel for background elements (e.g. Plane's grid — see
-# Input.background()). User content always has zIndex >= 0 (sendToBack/
-# sendBackward clamp to that floor), so this value is never produced by
-# normal layer-order operations and unambiguously marks "background".
-# Excluded from Context.maxZIndex/minZIndex/zIndexAbove/zIndexBelow.
+# Input.background()). User content always has zIndex >= 0 (sendToBack
+# clamps to that floor), so this value is never produced by normal
+# layer-order operations and unambiguously marks "background".
+# Excluded from Context.maxZIndex/minZIndex.
 BACKGROUND_Z_INDEX = -1
 
 # fmt: off

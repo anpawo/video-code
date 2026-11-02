@@ -303,7 +303,7 @@ class Context:
     derivingGroup: maybe[int] = None
 
     # Every non-interface Metadata ever created — used to resolve relative
-    # layer-order operations (bringToFront, sendToBack, bringForward, sendBackward).
+    # layer-order operations (bringToFront, sendToBack).
     metas: list[Metadata] = []
 
     # When True, Input.__new__ skips index assignment and @inputCreation skips
@@ -351,18 +351,6 @@ class Context:
     @staticmethod
     def minZIndex() -> int:
         return min((m.zIndex for m in Context.metas if m.zIndex != BACKGROUND_Z_INDEX), default=0)
-
-    @staticmethod
-    def zIndexAbove(z: int) -> maybe[int]:
-        """Smallest zIndex among all non-background inputs strictly greater than `z`, or None."""
-        candidates = [m.zIndex for m in Context.metas if m.zIndex != BACKGROUND_Z_INDEX and m.zIndex > z]
-        return min(candidates) if candidates else None
-
-    @staticmethod
-    def zIndexBelow(z: int) -> maybe[int]:
-        """Largest zIndex among all non-background inputs strictly less than `z`, or None."""
-        candidates = [m.zIndex for m in Context.metas if m.zIndex != BACKGROUND_Z_INDEX and m.zIndex < z]
-        return max(candidates) if candidates else None
 
     @staticmethod
     def create(inputIndex: int, inputType: str, inputArgs: dict[str, Any]):

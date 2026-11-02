@@ -9,7 +9,6 @@
 # the semantic layer-order helpers:
 #   .inFrontOf(other) / .behind(other)   — relative to one input
 #   .bringToFront()   / .sendToBack()    — relative to everything in the scene
-#   .bringForward()   / .sendBackward()  — move one layer at a time
 #
 # Plane is included to exercise that it's excluded from layer-order queries
 # (sendToBack should not put `c` behind the opaque background).

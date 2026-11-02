@@ -369,7 +369,7 @@ Every `Input` (shape, text, group, ...) has:
   `align(x=RIGHT_SIDE)`), `rotation(degree)`, `scale(factor | x=, y=)`,
   `opacity(o)`, `zIndex(z)`
 - Layering: `inFrontOf(other)`, `behind(other)`, `bringToFront()`,
-  `sendToBack()`, `bringForward()`, `sendBackward()`, `background()`
+  `sendToBack()`, `background()`
 - Visibility: `hide(start)`, `show(start)`
 
 **Eased animations** (`start`, `duration`, `easing: RateFunc`):
