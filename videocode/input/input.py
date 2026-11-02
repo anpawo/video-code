@@ -685,38 +685,16 @@ class Input(ABC):
         # (see BACKGROUND_Z_INDEX / Input.background()).
         return self.zIndex(max(0, Context.minZIndex() - 1))
 
-    def bringForward(self) -> Self:
-        """
-        Move one layer towards the front, swapping places with whatever is
-        directly in front. No-op if already frontmost.
-        """
-        above = Context.zIndexAbove(self.meta.zIndex)
-        if above is None:
-            return self
-        return self.zIndex(above)
-
-    def sendBackward(self) -> Self:
-        """
-        Move one layer towards the back, swapping places with whatever is
-        directly behind. No-op if already backmost.
-        """
-        below = Context.zIndexBelow(self.meta.zIndex)
-        if below is None:
-            return self
-        # Clamped to 0: zIndex -1 is reserved for the background
-        # (see BACKGROUND_Z_INDEX / Input.background()).
-        return self.zIndex(max(0, below - 1))
-
     def background(self, offset: maybe[frame] = None) -> Self:
         """
         Mark this `Input` (and any children) as part of the scene background:
         sets `zIndex` to `BACKGROUND_Z_INDEX` (-1).
 
-        Excluded from relative layer-order queries (bringToFront, sendToBack,
-        bringForward, sendBackward), so they never get pushed behind/in front
-        of the background by accident. Relative order between background
-        elements (e.g. Plane's grid lines on top of its backdrop rectangle)
-        is preserved by zOrderSeq, since they all tie at -1.
+        Excluded from relative layer-order queries (bringToFront, sendToBack),
+        so it never gets pushed behind/in front of the background by accident.
+        Relative order between background elements (e.g. Plane's grid lines on
+        top of its backdrop rectangle) is preserved by zOrderSeq, since they
+        all tie at -1.
         """
         self.broadcast(lambda i: i.zIndex(BACKGROUND_Z_INDEX, offset=offset))
         return self
