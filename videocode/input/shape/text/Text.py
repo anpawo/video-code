@@ -409,7 +409,6 @@ class Text(Group[Letter], _hasFillStroke):
         # clear index (virtual group, no C++ slot) and callbacks (not inherited).
         meta = _shallow_copy(src.meta)
         meta.index = cast(int, None)
-        meta.preCallbacks = {}
         meta.postCallbacks = {}
         inst.meta = meta
         # prop init guard skips onSet on first assignment, so no side effects here

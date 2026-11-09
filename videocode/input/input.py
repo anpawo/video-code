@@ -207,14 +207,6 @@ class Input(ABC):
 
         for s in flatten:
 
-            # Pre-callbacks: fire before resolve/modify/stack-push. Mutate shader fields to rewrite
-            # values, or return True to drop the shader entirely. Return False to let it through.
-            if any(
-                cb(s, start, duration, offset if offset is not None else self.meta.transformationOffset)
-                for cb in self.meta.preCallbacks.get(type(s), [])
-            ):
-                continue
-
             _s, _d, _o = s.resolve(start, duration, offset)
 
             __start = round(_s * FRAMERATE) + (_o if _o is not None else self.meta.transformationOffset)
@@ -494,13 +486,6 @@ class Input(ABC):
         Reference to prevent string missmatch
         """
         return cast(Self, AttributeNameReference())
-
-    def addPreCallback[T: IShader](self, shaderType: type[T], callback: Callable[[T, sec, sec, frame], bool]) -> None:
-        """
-        Register a pre-callback for a shader type. Called before Context.apply; return True to skip the shader.
-        """
-        cb = cast(Callable[[IShader, sec, sec, frame], bool], callback)
-        self.meta.preCallbacks.setdefault(shaderType, []).append(cb)
 
     def addPostCallback[T: IShader](self, shaderType: type[T], callback: Callable[[T, sec, sec, frame], None]) -> None:
         """
