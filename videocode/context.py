@@ -121,12 +121,7 @@ class Metadata:
         """
 
         # --- Callbacks ---
-        # preCallbacks: called before a shader is applied. Signature: (shader, start, duration, offset) -> bool.
-        #   - Mutate the shader's fields to rewrite its values (e.g. wrap a position modulo a tile size).
-        #   - Return True to drop the shader entirely (it never reaches the stack).
-        #   - Return False to let the (possibly mutated) shader through as normal.
         # postCallbacks: called after a shader is applied. Signature: (shader, start, duration, offset) -> None.
-        self.preCallbacks: dict[type[IShader], list[Callable[..., bool]]] = {}
         self.postCallbacks: dict[type[IShader], list[Callable[..., None]]] = {}
 
     def __str__(self) -> str:

@@ -473,7 +473,7 @@ nothing else:
   `mirror_transformations_feature` notes / `test/visual/scenes/mirror.py`.
 
 **Callbacks**:
-- `addPreCallback`/`addPostCallback` — hook into a shader's
+- `addPostCallback` — hook into a shader's
   apply lifecycle
 
 **Examples**: `test/visual/scenes/animation.py`, `layers.py` (zIndex),
