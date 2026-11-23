@@ -124,8 +124,9 @@ jobs:
           echo "linux tar.xz → $tag ($(git rev-parse --short HEAD))" >> "$GITHUB_STEP_SUMMARY"
 
   macos:
-    name: macOS Apple Silicon archive (macOS 14)
-    runs-on: macos-14
+    name: macOS Apple Silicon archive (macOS 15)
+    # macos-14 is retired; a job asking for it is refused before it starts (#447).
+    runs-on: macos-15
     permissions:
       contents: write
     steps:
