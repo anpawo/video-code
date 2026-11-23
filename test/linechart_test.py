@@ -132,6 +132,21 @@ check(f"the line is written on every frame of the draw ({len(order)} frames)", l
 check("it starts at the first point", approx(heads[order[0]], drawn.dots[0].meta.position.x))
 check("it ends at the last point", approx(heads[order[-1]], drawn.dots[-1].meta.position.x))
 check("and it only ever extends", all(heads[a] <= heads[b] + 1e-9 for a, b in zip(order, order[1:])))
+
+
+def onTheLine(x: float, y: float) -> bool:
+    """Whether (x, y) is on the straight segment between the two points either side of x."""
+    xs = [dot.meta.position.x for dot in drawn.dots]
+    ys = [dot.meta.position.y for dot in drawn.dots]
+    k = min(max(0, next(i for i in range(len(xs)) if xs[i] >= x - 1e-9) - 1), len(xs) - 2)
+    share = (x - xs[k]) / (xs[k + 1] - xs[k])
+    return approx(y, ys[k] + (ys[k + 1] - ys[k]) * share)
+
+
+ends = {frame: max(keys["Args:points"]["args"]["value"]) for frame, keys in written.items()
+        if frame != -1 and "Args:points" in keys}
+check("between two points, the pen is on the straight line that joins them",
+      all(onTheLine(x + drawn.line.meta.position.x, y + drawn.line.meta.position.y) for x, y in ends.values()))
 check("the draw lasts as long as it was asked to", order[-1] <= round(1.2 * FRAMERATE) + 1)
 
 for i, dot in enumerate(drawn.dots):
