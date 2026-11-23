@@ -47,6 +47,7 @@ marked = SOURCE.replace("return low", "return low  # untested: a reason")
 check("a line marked # untested: is left out", 5 not in statements(marked, "<test>", {5}))
 typed = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import os\nimport sys\n"
 check("an import under `if TYPE_CHECKING:` is left out, one outside it is not", statements(typed, "<test>", {3, 4}).keys() == {4})
+check("a body under `if not TYPE_CHECKING:` runs, so it is kept", statements(typed.replace("if TYPE", "if not TYPE"), "<test>", {3}).keys() == {3})
 
 section("hunks — the lines a diff adds, numbered in the new file")
 patch = """\

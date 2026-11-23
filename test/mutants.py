@@ -147,7 +147,7 @@ def statements(source: str, path: str, numbers: set[int]) -> dict[int, int]:
     """
     tree = ast.parse(source)
     nodes = [n for n in ast.walk(tree) if isinstance(n, ast.stmt)]
-    typeOnly = {line for n in nodes if isinstance(n, ast.If) and ast.unparse(n.test).endswith("TYPE_CHECKING")
+    typeOnly = {line for n in nodes if isinstance(n, ast.If) and ast.unparse(n.test) in ("TYPE_CHECKING", "typing.TYPE_CHECKING")
                 for s in n.body for line in range(s.lineno, (s.end_lineno or s.lineno) + 1)}
     code = runnable(compile(source, path, "exec"))
     text = source.splitlines()
