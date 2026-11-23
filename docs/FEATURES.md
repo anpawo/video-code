@@ -910,6 +910,7 @@ Standalone generator functions that build shader sequences. Call via `input.appl
 | `stagger(effect, every)` | `stagger.py` | The same effect on every member of a group, each starting `every` seconds after the previous — `Row(*cards).apply(stagger(popIn(), every=0.08))`; a `Text` staggers per letter; `every=0` is the plain effect |
 | `shake(amplitude, frequency, axis=Axis.X, decay)` | `shake.py` | Error/attention shake (deterministic, group-rigid) |
 | `popIn(...)` / `bounceIn(...)` / `spinIn(...)` / `blurIn(...)` | | Entrances: overshoot scale, gravity bounce, spin+scale, unblur |
+| `popOut(...)` | `popOut.py` | Exit twin of `popIn`: grows ~10%, shrinks to 0, then `hide()` so it stays gone |
 | `slideIn(direction=Direction.LEFT, ...)` / `slideOut(...)` | `slide.py` | Slide + fade entrance/exit |
 | `wipeIn(direction, ...)` / `wipeOut(...)` | `wipe.py` | Directional reveal/hide via animated crop |
 | `pulse(scale, times, ...)` | `pulse.py` | There-and-back scale pulse (beat-sync's partner) |

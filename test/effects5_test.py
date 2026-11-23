@@ -42,4 +42,20 @@ vals = next(iter(glows.values()))["args"]
 check("stored values survive to the stack", vals["radius"] == 7 and vals["intensity"] == 0.8)
 
 # ---------------------------------------------------------------------------
+section("popOut — overshoot, shrink to 0, then hide")
+
+from videocode.template.effect.other.popOut import popOut
+
+po = Rectangle(width=1, height=1)
+po.apply(popOut(duration=0.4))
+poScales = framesWith(po.meta.index, "Scale")
+pxs = [e["args"]["x"] for _, e in sorted(poScales.items())]
+peak = pxs.index(max(pxs))
+check("starts at the current scale", abs(pxs[0] - 1.0) < 0.02)
+check("overshoot frame grows ~10%", 1.05 < pxs[peak] < 1.15 and 0 < peak < len(pxs) - 1)
+check("shrinks to 0 at the end", abs(pxs[-1]) < 1e-6 and abs(poScales[max(poScales)]["args"]["y"]) < 1e-6)
+poHides = framesWith(po.meta.index, "Hide")
+check("hide lands after the last scale frame", len(poHides) == 1 and min(poHides) > max(poScales))
+
+# ---------------------------------------------------------------------------
 summary()
