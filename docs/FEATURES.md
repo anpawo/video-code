@@ -202,6 +202,8 @@ is loaded through the same `_SVGHelper`/`SVGPath`/`Offset`/`Group` pipeline as
 | `PositiveGraph`, `GraphPoint` | `Graph.py` | Axes restricted to positive quadrant; a labeled point on a `Graph` |
 | `BarChart(data, width, height, gap, top, color, fontSize, showValues)` | `BarChart.py` | One bar per row of data, its label under it and its value ON it. The tallest bar is exactly `height`, so `top=` is what lets two charts be read against each other. `grow()` animates the bars up from the baseline and writes each value with the SAME ramp as its bar, so the number rides the bar's top instead of sitting where it was left — which is the one thing every hand-written chart gets wrong. `BarChart.fromCSV(path, label=, value=)` reads the data from a file, by column name with a header row or by column number without, and refuses a bad cell by line rather than dropping the bar. |
 | `Leaderboard(rows, …)` | `BarChart.py` | The same chart, sorted biggest first — a leaderboard read in the order the data happened to be in is not a leaderboard. |
+| `LineChart(data, width, height, top, bottom, color, fontSize, showValues, dots, strokeWidth)` | `LineChart.py` | One point per row, evenly spaced across `width` and joined by a line, its label under it and its value over it. The highest value is exactly `height` above the baseline unless `top=` is given; `bottom=` (0 by default) is the value at the baseline, and a value below `bottom` or above `top` is refused by its row. `draw(duration, easing)` draws the line from the first point to the last, and each dot and value comes on at the frame the line reaches its point. `LineChart.fromCSV(path, label=, value=)` reads the file with `BarChart.fromCSV`'s rules. |
+| `PieChart(data, radius, colors, donut, startAngle, clockwise, fontSize, showLabels, showPercent)` | `PieChart.py` | One slice per row, in data order from `startAngle` (90 is the top), clockwise unless `clockwise=False`. The angles come from the running total, so they close the circle exactly; the percentages are rounded by largest remainder, so they add up to exactly 100. `donut` is the hole's radius as a fraction of `radius` (`0 <= donut < 1`). Each label sits outside the ring on its slice's middle angle and carries the name, the percentage or both. `colors=None` cycles a fixed palette. A negative value, data that adds up to 0 and a `donut` out of range are refused by name. `grow(duration, every, easing)` sweeps each slice open from its own start angle, `every` seconds after the one before, and its label comes on when the slice is open. Each slice is a `Polygon` in `chart.slices`: its `generateVertices()` is the slice opened to its full angle, and `grow()` writes the outline of every frame on the way there, keeping the slice pinned to the pie's centre after a move, a turn or a scale of the chart. `PieChart.fromCSV(path, label=, value=)` reads the file with `BarChart.fromCSV`'s rules. |
 | `Hemicycle(groups, width, rows, wedges, hole, seatColor, card)` | `Hemicycle.py` | A parliament's seat chart: one seat per deputy on a half-ring cut by aisles, the groups seated left to right as slices, on a dark card. Each row holds seats in proportion to its radius, rounded so the rows add up to the chamber exactly; `rows` follows the chamber's size when it is not given (15 for 577). `light(group, color, count, start, duration, settle)` turns a group's seats to a colour in a wave from the end of the baseline on its side, each seat coming on brighter than it stays; `count` lights the ones who voted. `clear()` puts the lit seats back. `seatsOf[group]` is the group's seats in wave order. Manim has no seat chart: its nearest tools are a `VGroup` of dots and `LaggedStart`. Scene: `videos/politics/assembly.py`. |
 | `ParticlesRay(size, nbr)` | `Particles.py` | Ring of small lines radiating outward (e.g. for click/sparkle effects) |
 | `Shadow(shape, offset, color, blurStrength)` | `Shadow.py` | Copy of another `Polygon`'s geometry, solid-filled, offset, rendered behind via `zIndex` |
@@ -910,7 +912,9 @@ Standalone generator functions that build shader sequences. Call via `input.appl
 | `stagger(effect, every)` | `stagger.py` | The same effect on every member of a group, each starting `every` seconds after the previous — `Row(*cards).apply(stagger(popIn(), every=0.08))`; a `Text` staggers per letter; `every=0` is the plain effect |
 | `shake(amplitude, frequency, axis=Axis.X, decay)` | `shake.py` | Error/attention shake (deterministic, group-rigid) |
 | `popIn(...)` / `bounceIn(...)` / `spinIn(...)` / `blurIn(...)` | | Entrances: overshoot scale, gravity bounce, spin+scale, unblur |
+| `popOut(...)` | `popOut.py` | Exit twin of `popIn`: grows ~10%, shrinks to 0, then `hide()` so it stays gone |
 | `slideIn(direction=Direction.LEFT, ...)` / `slideOut(...)` | `slide.py` | Slide + fade entrance/exit |
+| `riseIn(distance=0.5, duration=0.6)` | `riseIn.py` | Title entrance: fades in while rising `distance` into place; claims y only, so a concurrent x move still applies |
 | `wipeIn(direction, ...)` / `wipeOut(...)` | `wipe.py` | Directional reveal/hide via animated crop |
 | `pulse(scale, times, ...)` | `pulse.py` | There-and-back scale pulse (beat-sync's partner) |
 | `blink(times, start, duration)` | `blink.py` | Opacity snaps to 0 and back `times` times, ends at the original opacity — cursor, warning, "recording" dot |
@@ -937,6 +941,14 @@ ABOVE it, and `outgoing` itself is never touched.
 Easing curves (`videocode/utils/bezier.py`):
 - CSS-style cubic-beziers (`CubicBezier`): `Easing.Linear`, `Easing.In`,
   `Easing.Out`, `Easing.InOut`
+- The easings.net families, each `In`/`Out`/`InOut`, as `CubicBezier`s with
+  easings.net's control points: `Easing.InSine`, `Easing.OutSine`,
+  `Easing.InOutSine`, `Easing.InQuad`, `Easing.OutQuad`, `Easing.InOutQuad`,
+  `Easing.InCubic`, `Easing.OutCubic`, `Easing.InOutCubic`, `Easing.InQuart`,
+  `Easing.OutQuart`, `Easing.InOutQuart`, `Easing.InExpo`, `Easing.OutExpo`,
+  `Easing.InOutExpo`, `Easing.InCirc`, `Easing.OutCirc`, `Easing.InOutCirc`.
+  A cubic-bezier approximates the formula (within 0.01 at t=0.5): Sine, Expo
+  and Circ have no exact cubic form.
 - Manim-inspired rate functions (`Func`, ported from manim's
   `rate_functions`): `Easing.Smooth`, `Easing.RushInto`, `Easing.RushFrom`,
   `Easing.SlowInto`, `Easing.DoubleSmooth`, `Easing.ExponentialDecay` (0→1),
