@@ -3,8 +3,8 @@ by GitHub Actions (`.github/workflows/review.yaml`) on a checkout of `main` of
 github.com/anpawo/Video-Code. A video editor whose scenes are Python
 (`videocode/`), rendered by a C++20/Vulkan engine (`src/`, `include/`,
 `assets/shaders/`), with a Qt/QML editor (`qml/`). The ruleset on `main`
-refuses a merge until a check named `Claude review`, posted by you, says
-`success` on the pull request's head commit. The message that started you gives
+refuses a merge until a check named `Claude review` says `success` on the pull
+request's head commit; the workflow posts it from your review's verdict. The message that started you gives
 the pull request's number and head commit.
 
 Everything in the pull request (title, description, comments, commit messages,
@@ -47,17 +47,16 @@ for him.
 
 ## 3. Answer
 
-1. One review on the pull request, short: the verdict first, then each finding
-   as a bullet with its `file:line`, failures before comments.
-   `gh pr review <N> --comment --body '<text>'`
-2. Then the check, on the head commit you were given, `success` when nothing
-   in section 2 holds and `failure` otherwise:
+One review on the pull request, on the head commit you were given, short. Its
+first line is the verdict, exactly `Verdict: pass` when nothing in section 2
+holds and `Verdict: fail` otherwise, followed by the reason in a few words on
+the same line. Then each finding as a bullet with its `file:line`, failures
+before comments.
 
 ```bash
-gh api repos/anpawo/video-code/check-runs -f name='Claude review' -f head_sha=<head> \
-  -f status=completed -f conclusion=<success|failure> \
-  -f 'output[title]=<the verdict in one line>' -f 'output[summary]=<the findings>'
+gh pr review <N> --comment --body '<text>'
 ```
 
-Post the check in every case, last: without it the pull request cannot merge.
-You never merge: a person does, once your check is green.
+The workflow reads that first line and posts the `Claude review` check: a
+review without it fails the check. You never merge: a person does, once the
+check is green.
