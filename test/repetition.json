@@ -1,7 +1,7 @@
 {
-  "repeatedLines": 1668,
+  "repeatedLines": 1669,
   "repetitions": 117,
-  "deadNames": 19,
+  "deadNames": 16,
   "clones": {
     "f701efd1a8b3f6ef": [42, 2, "auto vertSpv = compileGLSL(loadShaderSource(\"vert.glsl\"), VK_SHADER_STAGE_VERTEX_BIT);"],
     "0b3e38fbdc9e2b06": [38, 3, "VkPipelineShaderStageCreateInfo stages[2]{};"],
@@ -38,6 +38,7 @@
     "f7bc0bc36c60032e": [10, 2, "VkImageCreateInfo ici{};"],
     "01cc61bf76476799": [9, 3, "speed: unumber = 1.0,"],
     "0525578c2c3b807f": [9, 2, "return;"],
+    "243ce0ece92af28b": [9, 2, "from __future__ import annotations"],
     "24a330f1c164b55c": [9, 2, "def __init__("],
     "2a8e6626ae583b55": [9, 3, "VkImageCreateInfo ici{};"],
     "2e9ea01dd1513769": [9, 2, "input: Input,"],
@@ -61,7 +62,6 @@
     "bdbcd17ee8bbdfef": [8, 2, "from __future__ import annotations"],
     "cee0ca97cf270a67": [8, 2, "text: field.modelData.kind"],
     "f1184f381ba09f71": [8, 2, "factory.addIndex(base + 0);"],
-    "fd1dab5a8b6e6e88": [8, 2, "fontSize: wnumber = 0.5,"],
     "fdb37477a04d7d68": [8, 2, "VkImage m_pingImage = VK_NULL_HANDLE;"]
   },
   "twins": {

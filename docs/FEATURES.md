@@ -914,6 +914,7 @@ Standalone generator functions that build shader sequences. Call via `input.appl
 | `popIn(...)` / `bounceIn(...)` / `spinIn(...)` / `blurIn(...)` | | Entrances: overshoot scale, gravity bounce, spin+scale, unblur |
 | `popOut(...)` | `popOut.py` | Exit twin of `popIn`: grows ~10%, shrinks to 0, then `hide()` so it stays gone |
 | `slideIn(direction=Direction.LEFT, ...)` / `slideOut(...)` | `slide.py` | Slide + fade entrance/exit |
+| `riseIn(distance=0.5, duration=0.6)` | `riseIn.py` | Title entrance: fades in while rising `distance` into place; claims y only, so a concurrent x move still applies |
 | `wipeIn(direction, ...)` / `wipeOut(...)` | `wipe.py` | Directional reveal/hide via animated crop |
 | `pulse(scale, times, ...)` | `pulse.py` | There-and-back scale pulse (beat-sync's partner) |
 | `zoomPunch(...)` / `flash(...)` / `jelly(...)` / `swing(...)` / `tada(...)` / `stamp(...)` | | Emphasis effects (Animate.css-style) |
