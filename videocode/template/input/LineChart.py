@@ -100,10 +100,11 @@ class LineChart(Group):
 
         # Placed on the middle of what it covers, its vertices relative to it:
         # an open path is drawn at position + vertex, while a group measures a
-        # member around its position — this is where both agree.
+        # member around its position — this is where both agree. The points
+        # already run from -width/2 to +width/2, so only y moves.
         ys = [py for _, py in self.points]
-        self.centre: point = (0.0, (min(ys) + max(ys)) / 2)
-        self.line = Curve(self._local(self.points), strokeColor=color, strokeWidth=strokeWidth).position(*self.centre)
+        self.middle = (min(ys) + max(ys)) / 2
+        self.line = Curve(self._local(self.points), strokeColor=color, strokeWidth=strokeWidth).position(x=0, y=self.middle)
 
         self.dots: list[Circle] = []
         self.labels: list[Text] = []
@@ -124,7 +125,7 @@ class LineChart(Group):
         super().__init__(self.line, *self.dots, *self.labels, *self.values)
 
     def _local(self, points: list[point]) -> list[point]:
-        return [(px - self.centre[0], py - self.centre[1]) for px, py in points]
+        return [(px, py - self.middle) for px, py in points]
 
     @classmethod
     def fromCSV(cls, path: str, *, label: str | int = 0, value: str | int = 1, **options) -> "LineChart":

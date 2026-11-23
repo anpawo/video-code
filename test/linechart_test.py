@@ -78,6 +78,23 @@ check("the line passes through every dot",
 check("the line is placed on the middle of what it covers, so the group measures it where it is drawn",
       approx(chart.line.meta.position.y, (chart.dots[3].meta.position.y + chart.dots[0].meta.position.y) / 2))
 
+check("and centred across, where the points run from -width/2 to +width/2", chart.line.meta.position.x == 0)
+
+section("the defaults: 8 by 3.5, BarChart's font size, a 0.05 line")
+_resetContext()
+plain = LineChart(DATA)
+pad, size = 0.28 * 0.6, 0.28
+check("8 wide, the points from -4 to 4", [round(dot.meta.position.x, 9) for dot in plain.dots] == [-4, -2, 0, 2, 4])
+check("3.5 high, the baseline at -1.75 and the highest point at 1.75",
+      approx(plain.baseline, -1.75) and approx(plain.dots[3].meta.position.y, 1.75))
+check("the line is 0.05 wide and each dot is 1.8 times that, with no outline",
+      plain.line.strokeWidth == 0.05 and all(approx(dot.radius, 0.09) and dot.strokeWidth == 0 for dot in plain.dots))
+check("labels and values are written at 0.28", all(text.fontSize == size for text in plain.labels + plain.values))
+check("a label's middle is 0.6 of the font size under the baseline, plus half a line",
+      all(approx(label.meta.position.y, -1.75 - pad - size / 2) for label in plain.labels))
+check("a value's middle is the same distance over its point",
+      all(approx(value.meta.position.y, dot.meta.position.y + pad + size / 2) for value, dot in zip(plain.values, plain.dots)))
+
 _resetContext()
 scaled = LineChart({"a": 5, "b": 2}, height=4, top=10)
 check("`top` fixes the scale, so two charts can be read against each other",
@@ -122,16 +139,23 @@ check(f"a top that is not above the bottom is refused ({message})",
 section("draw() — dot i and its value arrive with the line, frame by frame")
 _resetContext()
 drawn = LineChart(DATA, width=8)
-drawn.draw(duration=1.2)
+drawn.draw()  # 1.2 s by default
 
 written = Context.stack[drawn.line.meta.index]
-heads = {frame: max(x for x, _ in keys["Args:points"]["args"]["value"]) + drawn.line.meta.position.x
-         for frame, keys in written.items() if frame != -1 and "Args:points" in keys}
+pointsOf = {frame: keys["Args:points"]["args"]["value"] for frame, keys in written.items()
+            if frame != -1 and "Args:points" in keys}
+heads = {frame: max(x for x, _ in points) + drawn.line.meta.position.x for frame, points in pointsOf.items()}
 order = sorted(heads)
 check(f"the line is written on every frame of the draw ({len(order)} frames)", len(order) >= round(1.2 * FRAMERATE) - 1)
 check("it starts at the first point", approx(heads[order[0]], drawn.dots[0].meta.position.x))
 check("it ends at the last point", approx(heads[order[-1]], drawn.dots[-1].meta.position.x))
-check("and it only ever extends", all(heads[a] <= heads[b] + 1e-9 for a, b in zip(order, order[1:])))
+check("and its head moves on, frame after frame", all(heads[a] < heads[b] for a, b in zip(order, order[1:])))
+# An open path's points are anchor and handle in turn, last vertex first
+# (`Polygon.buildPoints`): the anchors of a line drawn left to right are in
+# falling x, and a path the renderer draws has at least four points.
+check("on every frame the path runs one way only, and is long enough for the renderer to draw",
+      all(len(points) >= 4 and all(a[0] >= b[0] for a, b in zip(points[0::2], points[2::2]))
+          for points in pointsOf.values()))
 
 
 def onTheLine(x: float, y: float) -> bool:
@@ -179,5 +203,40 @@ with tempfile.TemporaryDirectory() as folder:
     message = refused(lambda: LineChart.fromCSV(broken, label="day", value="sales"))
     check(f"a value that is not a number is refused BY LINE ({message})",
           "broken.csv:3" in message and "many" in message)
+
+    # The shared reading's other rules, checked here because they moved out
+    # of BarChart.fromCSV into the helper all three charts call.
+    _resetContext()
+    check("one column named is enough to say the file has a header row",
+          LineChart.fromCSV(named, label="day", value=1).rows == [("Mon", 2.0), ("Tue", 5.0)])
+
+    bare = os.path.join(folder, "bare.csv")
+    with open(bare, "w") as file:
+        file.write("Mon,2\nTue,5\n")
+    _resetContext()
+    check("with no header, the first column is the label and the second the value",
+          LineChart.fromCSV(bare).rows == [("Mon", 2.0), ("Tue", 5.0)])
+
+    badBare = os.path.join(folder, "badbare.csv")
+    with open(badBare, "w") as file:
+        file.write("Mon,2\nTue,lots\n")
+    _resetContext()
+    message = refused(lambda: LineChart.fromCSV(badBare))
+    check(f"with no header, the lines count from 1 ({message})", "badbare.csv:2" in message and "lots" in message)
+
+    short = os.path.join(folder, "short.csv")
+    with open(short, "w") as file:
+        file.write("day,sales\nMon,2\nTue\n")
+    _resetContext()
+    message = refused(lambda: LineChart.fromCSV(short, label="day", value="sales"))
+    check(f"a row with too few cells is refused at its line ({message})",
+          "short.csv:3 has 1 column(s)" in message)
+
+    empty = os.path.join(folder, "empty.csv")
+    with open(empty, "w") as file:
+        file.write("")
+    _resetContext()
+    message = refused(lambda: LineChart.fromCSV(empty))
+    check(f"an empty file is refused ({message})", "empty.csv has no rows" in message)
 
 summary()

@@ -25,12 +25,13 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "test")
 from helpers import check, section, summary
 
-from videocode.constants import BLUE_C, FRAMERATE, GREEN_A, RED_A
+from videocode.constants import BLUE_A, BLUE_C, FRAMERATE, GREEN_A, RED_A, RED_B, YELLOW
 from videocode.context import Context
 from videocode.input.interface.Group import Group
 from videocode.serialize import _resetContext
 from videocode.template.input.BarChart import BarChart
 from videocode.template.input.PieChart import PieChart
+from videocode.utils.bezier import Easing
 
 
 def approx(a: float, b: float, eps: float = 1e-6) -> bool:
@@ -97,8 +98,21 @@ back = PieChart({"a": 1, "b": 2, "c": 3, "d": 4}, startAngle=0, clockwise=False)
 check("startAngle and clockwise=False turn the other way, from where they are told",
       [round(s, 9) for s in back.starts] == [0, 36, 108, 216])
 
+section("the defaults: a whole pie of radius 1.6, from the top, clockwise, labels at 0.24")
+_resetContext()
+basic = PieChart({"a": 1, "b": 3})
+corners = world(basic.slices[0], basic.slices[0].vertices, (basic.slices[0].meta.position.x, basic.slices[0].meta.position.y))
+check("radius 1.6, and no hole: a corner at the centre",
+      approx(max(math.hypot(x, y) for x, y in corners), 1.6) and approx(min(math.hypot(x, y) for x, y in corners), 0))
+check("from the top, clockwise", basic.starts == [90, 0])
+check("labels written at 0.24", all(label.fontSize == 0.24 for label in basic.labels))
+
 section("the slices are drawn where their angles say")
 check("a slice's outline is rebuilt the same from its angles", all(s.generateVertices() == s.vertices for s in pie.slices))
+# A chord of 3° at 1.6 units (192 px) bows 0.07 px inside the circle.
+steps = [min(abs(b - a), 360 - abs(b - a)) for s in pie.slices for (a, b) in zip(*(lambda r: (r, r[1:]))(
+    [math.degrees(math.atan2(y, x)) for x, y in s.vertices if math.hypot(x, y) > 1]))]
+check(f"the rim is cut into pieces of at most 3° ({max(steps):.3f}°)", max(steps) <= 3 + 1e-9)
 for i, slice_ in enumerate(pie.slices):
     drawn = world(slice_, slice_.vertices, (slice_.meta.position.x, slice_.meta.position.y))
     radii = [math.hypot(x, y) for x, y in drawn]
@@ -138,6 +152,12 @@ for label in budget.labels:
     # nearest edges stood 1.806, 1.841, 1.775 and 1.981 from the centre.
     check(f"{label.text!r} is drawn clear of the ring ({math.hypot(nearX, nearY):.3f} from the centre, the rim at 1.8)",
           math.hypot(nearX, nearY) > 1.9)
+    # Along the middle angle, the label's near side stands 0.6 of the font
+    # size off the rim: its middle is that far out, plus half its box.
+    middle = math.atan2(label.meta.position.y, label.meta.position.x)
+    reach = abs(math.cos(middle)) * (max(rights) - min(lefts)) / 2 + abs(math.sin(middle)) * half
+    check(f"{label.text!r} stands 0.6 of the font size off the rim, along its middle angle",
+          approx(math.hypot(label.meta.position.x, label.meta.position.y), 1.8 + 0.24 * 0.6 + reach))
 
 # ── The percentages ────────────────────────────────────────────────────────
 section("the percentages, rounded by largest remainder, add up to exactly 100")
@@ -169,7 +189,9 @@ section("colours: a palette that cycles, or one per slice")
 _resetContext()
 many = PieChart([(str(i), 1) for i in range(8)])
 fills = [slice_.fillColor for slice_ in many.slices]
-check("the palette starts again once it has gone round", fills[0] == BLUE_C and fills[6] == fills[0] and fills[1] != fills[0])
+check("the palette, in order: the two blues and the two reds apart",
+      fills[:6] == [BLUE_C, RED_A, GREEN_A, YELLOW, BLUE_A, RED_B])
+check("it starts again once it has gone round", fills[6:] == fills[:2])
 _resetContext()
 told = PieChart({"a": 1, "b": 2}, colors=[GREEN_A, RED_A])
 check("a list gives each slice its colour, in order", [s.fillColor for s in told.slices] == [GREEN_A, RED_A])
@@ -211,7 +233,7 @@ def sweeps(chart: PieChart, i: int) -> dict[int, list[tuple[float, float]]]:
 
 _resetContext()
 growing = PieChart({"a": 1, "b": 2, "c": 3}, radius=2)
-growing.grow(duration=0.8, every=0.1)
+growing.grow()  # 0.8 s each, 0.1 s apart, by default
 steps = round(0.8 * FRAMERATE)
 
 for i, slice_ in enumerate(growing.slices):
@@ -253,6 +275,22 @@ for i in range(2):
     check(f"moved, turned and scaled first: slice {i} still grows about that centre, on all {len(drawn)} frames",
           len(drawn) > 5 and all(pinned(points, hubs[0], 3) for points in drawn.values()))
 
+_resetContext()
+nothing = PieChart({"a": 3, "none": 0, "b": 1}, radius=2)
+nothing.grow(every=0)
+check("a slice of 0 never comes on, and its label still does when its sweep is over",
+      frames(nothing.slices[1], "Show") == [] and frames(nothing.labels[1].inputs[0], "Show") == [round(0.8 * FRAMERATE) - 1])
+
+_resetContext()
+springy = PieChart({"a": 1, "b": 1}, radius=2)
+springy.grow(easing=Easing.Back)
+for i in range(2):
+    drawn = sweeps(springy, i)
+    edge = springy.starts[i] % 360
+    widest = max(max(((edge - angleOf(x, y)) % 360 for x, y in points if math.hypot(x, y) > 1 and not approx(angleOf(x, y), edge, 1e-6)), default=0)
+                 for points in drawn.values())
+    check(f"an easing that overshoots stops slice {i} at its own angle ({widest:.4f} of 180)", widest <= 180 + 1e-6)
+
 # ── From a file ────────────────────────────────────────────────────────────
 section("fromCSV — the same reading as BarChart.fromCSV")
 with tempfile.TemporaryDirectory() as folder:
@@ -260,7 +298,7 @@ with tempfile.TemporaryDirectory() as folder:
     with open(plain, "w") as file:
         file.write("reds,1\nblues,3\n")
     _resetContext()
-    fromFile = PieChart.fromCSV(plain, label=0, value=1, donut=0.4)
+    fromFile = PieChart.fromCSV(plain, donut=0.4)
     check("columns by number, the options passed on",
           fromFile.rows == [("reds", 1.0), ("blues", 3.0)] and fromFile.percents == [25, 75] and fromFile.donut == 0.4)
     _resetContext()
