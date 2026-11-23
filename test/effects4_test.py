@@ -15,6 +15,7 @@ from helpers import check, section, summary
 
 from videocode import *
 from videocode.template.effect.other.transitions import crossfade, push, wipeBetween
+from videocode.template.effect.other.blink import blink
 
 
 def framesWith(index: int, key: str) -> dict[int, dict]:
@@ -81,6 +82,19 @@ rightVals = [e["args"]["right"] for _, e in sorted(crops.items())]
 check("incoming crop sweeps 100 -> 0", abs(rightVals[0] - 100) < 1e-6 and abs(rightVals[-1]) < 1e-6)
 hides = framesWith(o2.meta.index, "Hide")
 check("outgoing hidden once the wipe completes", len(hides) == 1 and max(hides) >= max(crops))
+
+# ---------------------------------------------------------------------------
+section("blink — opacity off and on `times` times, ends at the original")
+
+bl = Rectangle(width=1, height=1).opacity(200)
+bl.apply(blink(times=3, duration=1.5))
+blOps = framesWith(bl.meta.index, "Opacity")
+blVals = [e["args"]["opacity"] for _, e in sorted(blOps.items())]
+blChanges = [v for prev, v in zip([200.0] + blVals, blVals) if v != prev]
+check("six opacity changes, alternating 0 and the original", blChanges == [0, 200] * 3)
+check("last frame is visible at the original opacity", blVals[-1] == 200)
+check("all blinks fit in the duration", max(blOps) - min(blOps) < 1.5 * FRAMERATE)
+check("meta ends at the original opacity", bl.meta.opacity == 200)
 
 # ---------------------------------------------------------------------------
 summary()

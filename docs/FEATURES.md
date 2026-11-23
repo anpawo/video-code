@@ -913,6 +913,7 @@ Standalone generator functions that build shader sequences. Call via `input.appl
 | `slideIn(direction=Direction.LEFT, ...)` / `slideOut(...)` | `slide.py` | Slide + fade entrance/exit |
 | `wipeIn(direction, ...)` / `wipeOut(...)` | `wipe.py` | Directional reveal/hide via animated crop |
 | `pulse(scale, times, ...)` | `pulse.py` | There-and-back scale pulse (beat-sync's partner) |
+| `blink(times, start, duration)` | `blink.py` | Opacity snaps to 0 and back `times` times, ends at the original opacity — cursor, warning, "recording" dot |
 | `zoomPunch(...)` / `flash(...)` / `jelly(...)` / `swing(...)` / `tada(...)` / `stamp(...)` | | Emphasis effects (Animate.css-style) |
 | `kenBurns(...)` | `kenBurns.py` | Slow pan+zoom for stills |
 
