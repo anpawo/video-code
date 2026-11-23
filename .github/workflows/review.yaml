@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: What this workflow runs
         run: |
-          echo "On every pull request into main: Claude follows .github/prompts/review.md, reads the change without running it, comments, and posts the check 'Claude review' that main requires before a merge. Claude never merges: a person does, once the check is green." >> "$GITHUB_STEP_SUMMARY"
+          echo "On every pull request into main: Claude follows .github/prompts/review.md, reads the change without running it and reviews it; the next job turns that review into the check 'Claude review' that main requires before a merge. Claude never merges: a person does, once the check is green." >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4 # main, not the pull request
 
@@ -44,15 +44,44 @@ jobs:
       - uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # The ruleset requires 'Claude review' from the Claude GitHub App, a check no
-          # workflow token can forge. contents: read leaves the app's token unable to merge
-          # or push, whatever a pull request asks of Claude.
+          # contents: read leaves the app's token unable to merge or push, whatever a pull
+          # request asks of Claude. No checks: write: Anthropic's token exchange refuses it
+          # since November 2026 (#455), so the job below posts the check.
           additional_permissions: |
             contents: read
-            checks: write
           claude_args: >-
             --model claude-sonnet-5
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(gh api repos/anpawo/video-code/check-runs:*),Bash(git fetch:*),Bash(git show:*),Read,Glob,Grep"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*),Bash(git fetch:*),Bash(git show:*),Read,Glob,Grep"
           prompt: |
             Pull request #${{ github.event.workflow_run.pull_requests[0].number }}, head commit ${{ github.event.workflow_run.head_sha }}.
             Read `.github/prompts/review.md` in full and follow it exactly.
+
+  check:
+    # Its own job, so the workflow token that can write checks is never in Claude's reach. It
+    # reads only what claude[bot] wrote on the head commit: anyone else's comment is ignored.
+    name: Claude review
+    needs: review
+    if: always() && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Post the check from Claude's verdict
+        run: |
+          last=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+            --jq "[.[] | select(.user.login == \"claude[bot]\" and .commit_id == \"$HEAD\")] | last | .body // \"\"")
+          verdict=$(printf '%s\n' "$last" | head -n1)
+          case "$verdict" in
+            'Verdict: pass'*) conclusion=success ;;
+            'Verdict: fail'*) conclusion=failure ;;
+            *) conclusion=failure; verdict="No verdict from Claude on $HEAD" ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/check-runs" -f name='Claude review' -f head_sha="$HEAD" \
+            -f status=completed -f conclusion="$conclusion" \
+            -f "output[title]=$verdict" -f "output[summary]=${last:0:60000}"
