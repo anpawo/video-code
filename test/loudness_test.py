@@ -99,6 +99,24 @@ def option(argv: list[str], name: str) -> str:
     return argv[argv.index(name) + 1] if name in argv else ""
 
 
+def ownType(measure: list[str], encode: list[str]) -> str | None:
+    """
+    The mode ffmpeg's loudnorm itself reports for the render's pass 2.
+
+    The render works the type out from loudnorm's rules (LoudnormMode.hpp):
+    its ffmpeg logs at "warning", so loudnorm's summary, an "info" line, never
+    shows, and `stats_file` is new in FFmpeg 9.0. Here the render's own
+    loudnorm stage runs again, audio only, over the inputs of the
+    measurement, at the default log level — and the "Normalization Type:"
+    line of its summary is the answer, on any ffmpeg version.
+    """
+    graph = re.sub(r"\[(\d+):a\]", lambda m: f"[{int(m.group(1)) - 1}:a]", option(encode, "-filter_complex"))
+    head = [a for a in measure[: measure.index("-filter_complex")] if a not in ("-progress", "pipe:2")]
+    said = run(["ffmpeg", *head, "-filter_complex", graph, "-map", "[aloud]", "-f", "null", "-"])
+    found = re.findall(r"Normalization Type:\s+(\w+)", said.stderr)
+    return found[-1].lower() if found else None
+
+
 def withoutLoudnorm(graph: str) -> str:
     """The mix a filter describes, with its final loudnorm stage taken off."""
     return re.sub(r";\[[^\]]+\]loudnorm=[^;]*$", "", graph)
@@ -194,6 +212,11 @@ if needsRenderer("--loudness is a flag of the renderer") and needsTool("ffmpeg",
     def portable(argv: list[str]) -> list[str]:
         return [a.replace(folder, "{DIR}") for a in argv]
 
+    def agrees(calls: list[list[str]], printed: str | None) -> None:
+        """The printed type is the one ffmpeg reports for the same values."""
+        own = ownType(calls[0], calls[1]) if len(calls) == 2 else None
+        check(f"ffmpeg's own loudnorm reports the printed type ({own} / {printed})", own is not None and own == printed)
+
     section("The test sound")
     check(f"the tone made with lavfi measures well below both targets ({level} LUFS)", level is not None and level < -30)
 
@@ -251,7 +274,8 @@ if needsRenderer("--loudness is a flag of the renderer") and needsTool("ffmpeg",
         check(f"one report line: {line.group(0) if line else said.stdout[-300:]!r}", line is not None and said.stdout.count("Loudness:") == 1)
         check("it names the target", line is not None and float(line.group(2)) == target)
         check(f"it names the mix's level as loudnorm measured it ({aimed})", line is not None and aimed is not None and abs(float(line.group(1)) - aimed) <= 0.05)
-        check("the type ffmpeg reported: linear, for a tone with a range", line is not None and line.group(3) == "linear")
+        check("the type printed: linear, for a tone with a range", line is not None and line.group(3) == "linear")
+        agrees(calls, line.group(3) if line else None)
 
         check("two ffmpeg runs: the measurement, then the render", len(calls) == 2)
         if len(calls) == 2:
@@ -326,8 +350,34 @@ if needsRenderer("--loudness is a flag of the renderer") and needsTool("ffmpeg",
     check("the render passes measured_LRA=0.01, not 0.00", len(calls) == 2 and ":measured_LRA=0.01:" in option(calls[1], "-filter_complex"))
     line = re.search(r"^Loudness: (-?[\d.]+) LUFS -> -23\.0 LUFS target \((\w+)\)$", said.stdout, re.M)
     check(f"the report says linear ({line.group(0) if line else said.stdout[-200:]!r})", line is not None and line.group(2) == "linear")
+    agrees(calls, line.group(2) if line else None)
     measured = loudness(output)
     check(f"ebur128 measures the file at -23 ±1 LU ({measured} LUFS)", measured is not None and abs(measured + 23) <= 1.0)
+
+    # The type is worked out by loudnorm's rules, not read from ffmpeg (its
+    # stats_file is new in 9.0), so the rules' other two outcomes are rendered
+    # too: a gain the -1 dBTP ceiling forbids, and a clip shorter than the
+    # 3 s loudnorm asks of its first frame, which it then takes linearly.
+    section("--loudness on pink noise — the type follows loudnorm's peak and length rules")
+    noise = os.path.join(folder, "noise.wav")
+    run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+        "-i", "anoisesrc=color=pink:duration=6:amplitude=0.05:seed=1", "-ac", "2", "-ar", "48000", noise,
+    ])
+    shortNoise = os.path.join(folder, "noise2.wav")
+    run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", noise, "-t", "2", shortNoise])
+    cases = [
+        ("6 s to -5: the peak would pass -1 dBTP", noise, 6, "-5", "dynamic"),
+        ("6 s to -20: the peak stays under", noise, 6, "-20", "linear"),
+        ("2 s to -5: shorter than 3 s", shortNoise, 2, "-5", "linear"),
+    ]
+    for name, sound, seconds, target, expected in cases:
+        scene = write(f"noise{seconds}{target}.py", f"from videocode import *\nSound({sound!r})\nwait({seconds})\n")
+        said = render(scene, os.path.join(folder, f"noise{seconds}{target}.mp4"), "--loudness", target)
+        calls = ffmpeg.calls()
+        line = re.search(rf"^Loudness: (-?[\d.]+) LUFS -> {target}\.0 LUFS target \((\w+)\)$", said.stdout, re.M)
+        check(f"{name}: prints {expected} ({line.group(0) if line else said.stdout[-200:]!r})", said.returncode == 0 and line is not None and line.group(2) == expected)
+        agrees(calls, line.group(2) if line else None)
 
     # ── nothing to normalise: rendered as before, and said ──────────────────
     section("Nothing to normalise — rendered as before, with the reason")

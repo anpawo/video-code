@@ -59,7 +59,7 @@ namespace VC::Audio
         std::string inputLRA;
         std::string inputThresh;
         std::string targetOffset;
-        std::string statsFile; // where the render's loudnorm writes what it did; set by the caller
+        double      seconds = -1.0; // the mixed stream's length, from pass 1's -progress; -1 when not reported
         std::string note;
     };
 
@@ -73,9 +73,10 @@ namespace VC::Audio
     // because loudnorm itself outputs 192 kHz (measured, ffmpeg 9.0.2).
     std::string loudnormStage(const Loudness& measured);
 
-    // After the render: "linear" or "dynamic", as the render's loudnorm wrote
-    // it to `statsFile`. Empty when the file holds no answer.
-    std::string appliedNormalisation(const Loudness& measured);
+    // "linear" or "dynamic": the mode the stage above makes loudnorm use,
+    // worked out by loudnorm's own rules (compiler/LoudnormMode.hpp) from the
+    // same values the stage writes.
+    std::string normalisationType(const Loudness& measured);
 
     // `loudness` is a Ready measurement to apply, or nullptr — and then the
     // string is exactly the one this function returned before --loudness.

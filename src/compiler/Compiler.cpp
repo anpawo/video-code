@@ -361,7 +361,6 @@ int VC::Compiler::generateVideo()
     // Where nothing can be normalised the render goes on as it would have, and
     // says so in one line: a flag that changed nothing must not look obeyed.
     VC::Audio::Loudness loudness;
-    const auto          loudnessFile = std::filesystem::temp_directory_path() / std::format("video-code-{}.loudnorm.json", (void*)this);
     if (config.loudness) {
         if (!profile.allowAudio)
             std::cout << "Loudness: not normalised — a GIF carries no sound.\n";
@@ -378,8 +377,6 @@ int VC::Compiler::generateVideo()
                     std::cerr << std::format("video-code: --loudness could not measure the mix. ffmpeg said:\n{}\n", loudness.note);
                     return EXIT_FAILURE;
                 case VC::Audio::Loudness::State::Ready:
-                    std::filesystem::remove(loudnessFile);
-                    loudness.statsFile = loudnessFile.string();
                     break;
             }
         }
@@ -578,11 +575,6 @@ int VC::Compiler::generateVideo()
     pclose(pipe);
     if (!chapters.empty())
         std::filesystem::remove(chapterFile);
-    // Pass 2's answer, read before the file goes: the type is the one ffmpeg
-    // applied, which a dynamic fallback would otherwise hide.
-    const std::string normalisation = normalised ? VC::Audio::appliedNormalisation(loudness) : "";
-    if (normalised)
-        std::filesystem::remove(loudnessFile);
     if (writeFailed)
         return 1;
 
@@ -596,8 +588,10 @@ int VC::Compiler::generateVideo()
     doneBar += "                    "; // clear leftover frame-count text
     std::cout << "\r" << doneBar << "\n";
 
+    // The type is loudnorm's own rule applied to the values the render passed
+    // (LoudnormMode.hpp): a dynamic fallback would otherwise go unsaid.
     if (normalised)
-        std::cout << std::format("Loudness: {:.1f} LUFS -> {:.1f} LUFS target ({})\n", std::strtod(loudness.inputI.c_str(), nullptr), loudness.target, normalisation.empty() ? "type not reported" : normalisation);
+        std::cout << std::format("Loudness: {:.1f} LUFS -> {:.1f} LUFS target ({})\n", std::strtod(loudness.inputI.c_str(), nullptr), loudness.target, VC::Audio::normalisationType(loudness));
 
     printChapters(_core._timestamps, *first, *last, chapters.empty() ? ext : "");
     return 0;

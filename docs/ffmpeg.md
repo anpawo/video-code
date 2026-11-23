@@ -45,18 +45,35 @@ It is ffmpeg's `loudnorm` in two passes:
    0.01: ffmpeg 9.0.2 uses dynamic mode for `measured_LRA=0.00`, and a short clip
    often measures 0.00 (a steady tone, and 8 s of real music, did).
 
+Every option of both passes exists in `loudnorm` from FFmpeg 6.1 on (read in
+`af_loudnorm.c` at n6.1.1 and n9.0).
+
 One pass alone is not linear: with nothing measured, `loudnorm` falls back to
 dynamic mode and rides the gain through the film. After the render, one line says
-what happened, with the type that the render's `loudnorm` reports:
+what happened, with the type that `loudnorm` uses:
 
 ```
 Loudness: -41.5 LUFS -> -14.0 LUFS target (linear)
 ```
 
-`dynamic` is printed when ffmpeg used it. ffmpeg 9.0.2 used it for a gain that
-would put the peak above −1 dBTP, and then the target can be missed: steady pink
-noise at −40.7 LUFS, asked for −5, came out at −9.7 LUFS by `ebur128`. The same
-noise asked for −20 was linear, at −20.5 (both measured).
+The render cannot read that type from ffmpeg: it logs at `warning`, and
+`stats_file` exists only from FFmpeg 9.0. So the type comes from `loudnorm`'s own
+two rules, applied to the values the render passes (`VC::Audio::LoudnormPass2`,
+`include/compiler/LoudnormMode.hpp`, with the source lines of n6.1.1 and n9.0):
+
+- linear when the gain keeps the peak at or under −1 dBTP and the measured range
+  fits under the target range;
+- otherwise linear too when the mix is shorter than 3 s, the length of
+  `loudnorm`'s first frame in dynamic mode, with the gain cut back to the peak
+  ceiling;
+- dynamic in every other case.
+
+`test/loudness_test.py` compares the printed type with the one ffmpeg itself
+reports for the same values. When the peak decides, the target can be missed:
+steady pink noise at −40.7 LUFS, asked for −5, was dynamic and came out at
+−9.7 LUFS by `ebur128`. 2 s of the same noise asked for −5 was linear, at
+−11.0. The 6 s noise asked for −20 was linear, at −20.5 (all measured, ffmpeg
+9.0.2).
 
 The target is −70 to −5, the range `loudnorm` accepts. Another value, or
 `--loudness` without `--generate`, is refused before the scene runs. With `--for`

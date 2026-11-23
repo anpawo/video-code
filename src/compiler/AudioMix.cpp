@@ -5,10 +5,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <format>
-#include <fstream>
 #include <iostream>
-#include <iterator>
 
+#include "compiler/LoudnormMode.hpp"
 #include "core/Config.hpp"
 #include "input/media/Sound.hpp"
 #include "input/media/Video.hpp"
@@ -287,10 +286,12 @@ namespace VC::Audio
             return measured;
 
         // -nostdin: this ffmpeg shares the terminal, and would read keys from it.
-        // LRA=11 here is only what the report's `output_*` lines assume; the
-        // `input_*` values the render needs do not depend on it.
+        // -progress pipe:2: its last `out_time=` is the length of the mixed
+        // stream, which decides loudnorm's mode for a clip under 3 s
+        // (LoudnormMode.hpp). LRA=11 here is only what the report's `output_*`
+        // lines assume; the `input_*` values the render needs do not depend on it.
         const std::string command = std::format(
-            "ffmpeg -hide_banner -nostats -nostdin{} -filter_complex \"{};[{}]loudnorm=I={}:TP=-1:LRA=11:print_format=json[lmeasure]\" -map \"[lmeasure]\" -f null - 2>&1",
+            "ffmpeg -hide_banner -nostats -nostdin -progress pipe:2{} -filter_complex \"{};[{}]loudnorm=I={}:TP=-1:LRA=11:print_format=json[lmeasure]\" -map \"[lmeasure]\" -f null - 2>&1",
             graph.inputs,
             graph.filter,
             graph.label,
@@ -324,6 +325,14 @@ namespace VC::Audio
             return measured;
         }
 
+        // out_time=HH:MM:SS.micro, the last one written; "N/A" leaves it unknown.
+        if (const size_t at = said.rfind("out_time="); at != std::string::npos) {
+            int    h = 0, m = 0;
+            double s = 0.0;
+            if (std::sscanf(said.c_str() + at, "out_time=%d:%d:%lf", &h, &m, &s) == 3)
+                measured.seconds = h * 3600.0 + m * 60.0 + s;
+        }
+
         // At -70 LUFS and below loudnorm's gate has nothing left to measure,
         // and the gain to the target has no bound: "-inf" is what silence says.
         measured.state = !(std::strtod(measured.inputI.c_str(), nullptr) > -70.0) ? Loudness::State::Silent : Loudness::State::Ready;
@@ -343,35 +352,47 @@ namespace VC::Audio
     // gave dynamic with 0.00 and linear with 0.01, at -14 and at -23 alike,
     // every file at the target by ebur128 (the controller, 2026-11-23). The
     // measurement is changed by 0.01 LU, which is no range either.
+    std::string measuredRange(const Loudness& measured)
+    {
+        return std::strtod(measured.inputLRA.c_str(), nullptr) < 0.01 ? std::string("0.01") : measured.inputLRA;
+    }
+
+    double targetRange(const Loudness& measured)
+    {
+        return std::min(50.0, std::max(11.0, std::strtod(measured.inputLRA.c_str(), nullptr)));
+    }
+
+    // Every option here is in loudnorm at FFmpeg n6.1.1 as well as n9.0.
     std::string loudnormStage(const Loudness& measured)
     {
-        const double lra = std::strtod(measured.inputLRA.c_str(), nullptr);
-        const double range = std::min(50.0, std::max(11.0, lra));
         return std::format(
-            "loudnorm=I={}:TP=-1:LRA={}:measured_I={}:measured_LRA={}:measured_TP={}:measured_thresh={}:offset={}:linear=true:print_format=json{},aresample=48000",
+            "loudnorm=I={}:TP=-1:LRA={}:measured_I={}:measured_LRA={}:measured_TP={}:measured_thresh={}:offset={}:linear=true:print_format=summary,aresample=48000",
             measured.target,
-            range,
+            targetRange(measured),
             measured.inputI,
-            lra < 0.01 ? std::string("0.01") : measured.inputLRA,
+            measuredRange(measured),
             measured.inputTP,
             measured.inputThresh,
-            measured.targetOffset,
-            measured.statsFile.empty() ? "" : std::format(":stats_file='{}'", measured.statsFile)
+            measured.targetOffset
         );
     }
 
-    // The render's ffmpeg logs at "warning", and loudnorm's own report is
-    // "info": the stats file is how its answer leaves the process.
-    std::string appliedNormalisation(const Loudness& measured)
+    // The numbers are parsed from the same text loudnormStage writes (a double
+    // formatted with {} reads back as the same double), so the comparisons in
+    // loudnormLinear are made on what ffmpeg itself will compare.
+    std::string normalisationType(const Loudness& measured)
     {
-        std::ifstream in(measured.statsFile);
-        if (!in)
-            return "";
-        const std::string         said((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        const std::optional<json> report = loudnormReport(said);
-        if (!report || !report->contains("normalization_type") || !(*report)["normalization_type"].is_string())
-            return "";
-        return (*report)["normalization_type"].get<std::string>();
+        const LoudnormPass2 pass2{
+            .targetI = measured.target,
+            .targetTP = -1.0,
+            .targetLRA = targetRange(measured),
+            .measuredI = std::strtod(measured.inputI.c_str(), nullptr),
+            .measuredTP = std::strtod(measured.inputTP.c_str(), nullptr),
+            .measuredLRA = std::strtod(measuredRange(measured).c_str(), nullptr),
+            .measuredThresh = std::strtod(measured.inputThresh.c_str(), nullptr),
+            .seconds = measured.seconds,
+        };
+        return loudnormLinear(pass2) ? "linear" : "dynamic";
     }
 
     AudioArgs buildAudioArgs(const std::vector<std::unique_ptr<IInput>>& inputs, const std::string& audioCodec, std::optional<std::pair<double, double>> window, size_t frames, const Loudness* loudness)
