@@ -1,10 +1,13 @@
 #include "compiler/AudioMix.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <iostream>
 
+#include "compiler/LoudnormMode.hpp"
 #include "core/Config.hpp"
 #include "input/media/Sound.hpp"
 #include "input/media/Video.hpp"
@@ -245,14 +248,160 @@ namespace VC::Audio
         return graph;
     }
 
-    AudioArgs buildAudioArgs(const std::vector<std::unique_ptr<IInput>>& inputs, const std::string& audioCodec, std::optional<std::pair<double, double>> window, size_t frames)
+    // A sound longer than the film would otherwise stretch the file past its
+    // last frame. Shared by the render and its measurement: a measurement of
+    // a longer stretch than the one written would aim at the wrong loudness.
+    std::pair<double, double> filmWindow(std::optional<std::pair<double, double>> window, size_t frames)
     {
-        // a sound longer than the film would otherwise stretch the file past its last frame
-        if (!window)
-            window = std::pair{0.0, static_cast<double>(frames) / Config::SCENE_FRAMERATE};
-        const AudioGraph graph = buildAudioGraph(inputs, window, frames, 1);
+        return window ? *window : std::pair{0.0, static_cast<double>(frames) / Config::SCENE_FRAMERATE};
+    }
+
+    // loudnorm's JSON report: the last `{ … }` that holds "input_i". Values
+    // are strings in it, every one of them (ffmpeg 9.0.2, measured).
+    std::optional<json> loudnormReport(const std::string& said)
+    {
+        const size_t key = said.rfind("\"input_i\"");
+        if (key == std::string::npos)
+            return std::nullopt;
+        const size_t open = said.rfind('{', key);
+        const size_t close = said.find('}', key);
+        if (open == std::string::npos || close == std::string::npos)
+            return std::nullopt;
+        json report = json::parse(said.substr(open, close - open + 1), nullptr, false);
+        if (report.is_discarded() || !report.is_object())
+            return std::nullopt;
+        return report;
+    }
+
+    // One pass of loudnorm on its own, with `linear=true`, is not linear: it
+    // has nothing measured to aim with, and falls back to dynamic mode, which
+    // rides the gain through the film. Measured on a 6 s tone: pass 1 said
+    // "dynamic". So the mix is measured first, audio only, with nothing
+    // written, and the render applies what was found.
+    Loudness measureLoudness(const std::vector<std::unique_ptr<IInput>>& inputs, std::optional<std::pair<double, double>> window, size_t frames, double target)
+    {
+        Loudness         measured{.target = target};
+        const AudioGraph graph = buildAudioGraph(inputs, filmWindow(window, frames), frames, 0);
+        if (graph.count == 0)
+            return measured;
+
+        // -nostdin: this ffmpeg shares the terminal, and would read keys from it.
+        // -progress pipe:2: its last `out_time=` is the length of the mixed
+        // stream, which decides loudnorm's mode for a clip under 3 s
+        // (LoudnormMode.hpp). LRA=11 here is only what the report's `output_*`
+        // lines assume; the `input_*` values the render needs do not depend on it.
+        const std::string command = std::format(
+            "ffmpeg -hide_banner -nostats -nostdin -progress pipe:2{} -filter_complex \"{};[{}]loudnorm=I={}:TP=-1:LRA=11:print_format=json[lmeasure]\" -map \"[lmeasure]\" -f null - 2>&1",
+            graph.inputs,
+            graph.filter,
+            graph.label,
+            target
+        );
+        FILE* p = popen(command.c_str(), "r");
+        if (!p) {
+            measured.state = Loudness::State::Failed;
+            measured.note = "ffmpeg could not be started";
+            return measured;
+        }
+        std::string said;
+        char        buf[4096];
+        for (size_t n; (n = fread(buf, 1, sizeof buf, p)) > 0;)
+            said.append(buf, n);
+        const int status = pclose(p);
+
+        const std::optional<json> report = loudnormReport(said);
+        const auto                text = [&](const char* key) {
+            return report && report->contains(key) && (*report)[key].is_string() ? (*report)[key].get<std::string>() : std::string();
+        };
+        measured.inputI = text("input_i");
+        measured.inputTP = text("input_tp");
+        measured.inputLRA = text("input_lra");
+        measured.inputThresh = text("input_thresh");
+        measured.targetOffset = text("target_offset");
+        if (status != 0 || measured.inputI.empty() || measured.inputTP.empty() || measured.inputLRA.empty() || measured.inputThresh.empty() || measured.targetOffset.empty()) {
+            measured.state = Loudness::State::Failed;
+            const size_t tail = said.size() > 600 ? said.size() - 600 : 0;
+            measured.note = said.substr(tail);
+            return measured;
+        }
+
+        // out_time=HH:MM:SS.micro, the last one written; "N/A" leaves it unknown.
+        if (const size_t at = said.rfind("out_time="); at != std::string::npos) {
+            int    h = 0, m = 0;
+            double s = 0.0;
+            if (std::sscanf(said.c_str() + at, "out_time=%d:%d:%lf", &h, &m, &s) == 3)
+                measured.seconds = h * 3600.0 + m * 60.0 + s;
+        }
+
+        // At -70 LUFS and below loudnorm's gate has nothing left to measure,
+        // and the gain to the target has no bound: "-inf" is what silence says.
+        measured.state = !(std::strtod(measured.inputI.c_str(), nullptr) > -70.0) ? Loudness::State::Silent : Loudness::State::Ready;
+        return measured;
+    }
+
+    // linear=true is a request, not a promise. ffmpeg 9.0.2 gave dynamic for a
+    // gain that would lift the peak above -1 dBTP (measured). LRA is the
+    // larger of 11 and the measured range, capped at loudnorm's 50, as
+    // SPEC-loudness.md asks: a target range below the measured one is the
+    // spec's named cause of the fallback. The report says which mode happened.
+    //
+    // measured_LRA is passed as at least 0.01. loudnorm takes 0.00 (its
+    // default value) as a reason for dynamic mode, and a short clip can
+    // measure 0.00: a steady tone does, and test/tour_music.wav (8 s of real
+    // music) did. On that file pass 2 with measured_I=-16.09:measured_TP=-6.16
+    // gave dynamic with 0.00 and linear with 0.01, at -14 and at -23 alike,
+    // every file at the target by ebur128 (the controller, 2026-11-23). The
+    // measurement is changed by 0.01 LU, which is no range either.
+    std::string measuredRange(const Loudness& measured)
+    {
+        return std::strtod(measured.inputLRA.c_str(), nullptr) < 0.01 ? std::string("0.01") : measured.inputLRA;
+    }
+
+    double targetRange(const Loudness& measured)
+    {
+        return std::min(50.0, std::max(11.0, std::strtod(measured.inputLRA.c_str(), nullptr)));
+    }
+
+    // Every option here is in loudnorm at FFmpeg n6.1.1 as well as n9.0.
+    std::string loudnormStage(const Loudness& measured)
+    {
+        return std::format(
+            "loudnorm=I={}:TP=-1:LRA={}:measured_I={}:measured_LRA={}:measured_TP={}:measured_thresh={}:offset={}:linear=true:print_format=summary,aresample=48000",
+            measured.target,
+            targetRange(measured),
+            measured.inputI,
+            measuredRange(measured),
+            measured.inputTP,
+            measured.inputThresh,
+            measured.targetOffset
+        );
+    }
+
+    // The numbers are parsed from the same text loudnormStage writes (a double
+    // formatted with {} reads back as the same double), so the comparisons in
+    // loudnormLinear are made on what ffmpeg itself will compare.
+    std::string normalisationType(const Loudness& measured)
+    {
+        const LoudnormPass2 pass2{
+            .targetI = measured.target,
+            .targetTP = -1.0,
+            .targetLRA = targetRange(measured),
+            .measuredI = std::strtod(measured.inputI.c_str(), nullptr),
+            .measuredTP = std::strtod(measured.inputTP.c_str(), nullptr),
+            .measuredLRA = std::strtod(measuredRange(measured).c_str(), nullptr),
+            .measuredThresh = std::strtod(measured.inputThresh.c_str(), nullptr),
+            .seconds = measured.seconds,
+        };
+        return loudnormLinear(pass2) ? "linear" : "dynamic";
+    }
+
+    AudioArgs buildAudioArgs(const std::vector<std::unique_ptr<IInput>>& inputs, const std::string& audioCodec, std::optional<std::pair<double, double>> window, size_t frames, const Loudness* loudness)
+    {
+        const AudioGraph graph = buildAudioGraph(inputs, filmWindow(window, frames), frames, 1);
         if (graph.count == 0)
             return {"", " -an", 0};
+        if (loudness && loudness->state == Loudness::State::Ready)
+            return {graph.inputs, std::format(" -filter_complex \"{};[{}]{}[aloud]\" -map 0:v -map \"[aloud]\" -c:a {}", graph.filter, graph.label, loudnormStage(*loudness), audioCodec), graph.count};
         return {graph.inputs, std::format(" -filter_complex \"{}\" -map 0:v -map \"[{}]\" -c:a {}", graph.filter, graph.label, audioCodec), graph.count};
     }
 } // namespace VC::Audio
