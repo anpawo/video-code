@@ -141,7 +141,7 @@ def statements(source: str, path: str, numbers: set[int]) -> dict[int, int]:
     {added line: first line of the statement it is part of}, for the lines that are code.
 
     The first line, because a statement spread over three lines reports itself
-    as run on its first one only. Comments, blank lines and docstrings are not
+    as run on its first one only. Comments, blank lines, docstrings and a stub `...` are not
     code, and neither is a line marked EXEMPT nor an `if TYPE_CHECKING:` body,
     which only the type checker reads.
     """
@@ -154,7 +154,7 @@ def statements(source: str, path: str, numbers: set[int]) -> dict[int, int]:
     out: dict[int, int] = {}
     for n in sorted(numbers):
         line = text[n - 1].strip() if n <= len(text) else ""
-        if not line or line.startswith("#") or n in typeOnly:
+        if not line or line.startswith("#") or line == "..." or n in typeOnly:
             continue
         owners = [s.lineno for s in nodes if s.lineno <= n <= (s.end_lineno or s.lineno)]
         if not owners:
