@@ -14,6 +14,7 @@ rounded by largest remainder, so they add up to 100.
 from __future__ import annotations
 
 import math
+from fractions import Fraction
 
 from videocode.constants import *
 from videocode.input.interface.Group import Group
@@ -66,8 +67,12 @@ def _wide(text: Text) -> float:
 
 def _percents(values: list[number]) -> list[int]:
     """Whole percentages that add up to exactly 100: the floors, and the points left over to the largest remainders."""
-    total = sum(values)
-    shares = [100 * value / total for value in values]
+    # Exact, because the remainders are compared: in floats, 1, 1, 4 gave the
+    # 4 a remainder of 0.6666666666666714 against 0.666666666666668 for each 1,
+    # and the point that goes to the first of three equal remainders went to the last.
+    exact = [Fraction(value) for value in values]
+    total = sum(exact)
+    shares = [100 * value / total for value in exact]
     whole = [math.floor(share) for share in shares]
     left = 100 - sum(whole)
     for i in sorted(range(len(values)), key=lambda i: (-(shares[i] - whole[i]), i))[:left]:

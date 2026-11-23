@@ -25,7 +25,7 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "test")
 from helpers import check, section, summary
 
-from videocode.constants import BLUE_A, BLUE_C, FRAMERATE, GREEN_A, RED_A, RED_B, YELLOW
+from videocode.constants import BLUE_A, BLUE_C, FRAMERATE, GREEN_A, RED_A, RED_B, TRANSPARENT, YELLOW
 from videocode.context import Context
 from videocode.input.interface.Group import Group
 from videocode.serialize import _resetContext
@@ -113,6 +113,12 @@ check("a slice's outline is rebuilt the same from its angles", all(s.generateVer
 steps = [min(abs(b - a), 360 - abs(b - a)) for s in pie.slices for (a, b) in zip(*(lambda r: (r, r[1:]))(
     [math.degrees(math.atan2(y, x)) for x, y in s.vertices if math.hypot(x, y) > 1]))]
 check(f"the rim is cut into pieces of at most 3° ({max(steps):.3f}°)", max(steps) <= 3 + 1e-9)
+_resetContext()
+thin = PieChart({"thin": 1, "rest": 199})
+check("and into no more pieces than that: a slice under 3° is one straight piece, a 358.2° one is 120",
+      [len([v for v in s.vertices if math.hypot(*v) > 1]) for s in thin.slices] == [2, 121])
+check("a slice has no outline, so neighbours meet edge to edge",
+      all(s.strokeWidth == 0 and s.strokeColor == TRANSPARENT for s in thin.slices))
 for i, slice_ in enumerate(pie.slices):
     drawn = world(slice_, slice_.vertices, (slice_.meta.position.x, slice_.meta.position.y))
     radii = [math.hypot(x, y) for x, y in drawn]
@@ -166,6 +172,7 @@ for data, expected in (
     ([1, 1, 1, 1, 1, 1], [17, 17, 17, 17, 16, 16]),
     ([2, 3, 5, 7], [12, 18, 29, 41]),
     ([3, 0, 1], [75, 0, 25]),
+    ([1, 1, 4], [17, 17, 66]),
 ):
     _resetContext()
     shares = PieChart([(f"r{i}", v) for i, v in enumerate(data)])
@@ -241,7 +248,7 @@ for i, slice_ in enumerate(growing.slices):
     order = sorted(drawn)
     begins = round(i * 0.1 * FRAMERATE)
     check(f"slice {i} is hidden from the start, and comes on as it starts opening (shown {frames(slice_, 'Show')})",
-          frames(slice_, "Hide") == [0] and abs(frames(slice_, "Show")[0] - begins) <= 1)
+          frames(slice_, "Hide") == [0] and len(frames(slice_, "Show")) == 1 and abs(frames(slice_, "Show")[0] - begins) <= 1)
     check(f"slice {i} is written on every frame of its sweep ({len(order)})", len(order) >= steps - 2)
     edge = growing.starts[i] % 360
     rims = {frame: [(x, y) for x, y in drawn[frame] if math.hypot(x, y) > 1] for frame in order}
@@ -280,6 +287,13 @@ nothing = PieChart({"a": 3, "none": 0, "b": 1}, radius=2)
 nothing.grow(every=0)
 check("a slice of 0 never comes on, and its label still does when its sweep is over",
       frames(nothing.slices[1], "Show") == [] and frames(nothing.labels[1].inputs[0], "Show") == [round(0.8 * FRAMERATE) - 1])
+
+_resetContext()
+instant = PieChart({"a": 1, "b": 3}, radius=2)
+instant.grow(duration=0, every=0)
+check("duration=0 opens every slice and shows every label on the one frame it has",
+      all(frames(s, "Show") == [0] for s in instant.slices)
+      and all(frames(label.inputs[0], "Show") == [0] for label in instant.labels))
 
 _resetContext()
 springy = PieChart({"a": 1, "b": 1}, radius=2)
