@@ -217,6 +217,17 @@ for build, needle, why in (
     message = refused(build)
     check(f"{why} is refused ({message})", needle in message)
 
+# A slice is at most one turn. Past that, the rim would be cut into one piece
+# per 3° of an angle that has no bound: on CI a slice of 360 * running * total
+# degrees grew one test past the runner's memory and the runner died (#443).
+from videocode.template.input.PieChart import _ring  # noqa: E402
+
+check("a slice of exactly one turn is drawn (121 rim points + the centre)", len(_ring(90, -360, 1.6, 0)) == 122)
+message = refused(lambda: _ring(90, -361, 1.6, 0))
+check(f"a slice of more than one turn is refused, naming its angle ({message})", "-361" in message and "one turn" in message)
+message = refused(lambda: _ring(90, 1e9, 1.6, 0.8))
+check(f"so is a runaway angle, before any point is made ({message})", "1e+09°" in message and "one turn" in message)
+
 # ── The entrance ───────────────────────────────────────────────────────────
 section("grow() — each slice sweeps open from its start angle, pinned to the centre")
 

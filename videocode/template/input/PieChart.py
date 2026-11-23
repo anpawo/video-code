@@ -38,6 +38,10 @@ _STEP = 3.0
 
 def _ring(start: float, sweep: float, outer: float, inner: float) -> list[point]:
     """The outline of a slice: `sweep` degrees from `start`, negative for clockwise, between two radii."""
+    # A slice is at most one turn. Past it the rim is one piece per 3° of an
+    # angle with no bound, and one wrong angle ran a CI runner out of memory.
+    if abs(sweep) > 360 + 1e-9:
+        raise ValueError(f"a slice of {sweep:g}° is more than one turn — the angles of a pie add up to 360")
     steps = max(1, math.ceil(abs(sweep) / _STEP))
     angles = [math.radians(start + sweep * j / steps) for j in range(steps + 1)]
     rim = [(outer * math.cos(a), outer * math.sin(a)) for a in angles]
