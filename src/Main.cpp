@@ -233,6 +233,15 @@ void setParserArgument(argparse::ArgumentParser &p)
         .help("With --generate, stop at this point — seconds or a timestamp() name. Clamped to the scene.");
 
     p
+        .add_argument("--loudness")
+        .help(
+            "With --generate, bring the file's integrated loudness to this target in LUFS, from -70 to -5: "
+            "-14 is Spotify's, -16 Apple Podcasts'. ffmpeg's loudnorm in two passes — one measures the mix, "
+            "the render applies the measured values with a -1 dBTP peak ceiling — and the line it prints says "
+            "where the mix was. Off by default; the editor preview plays the mix as it is."
+        );
+
+    p
         .add_argument("--for")
         .help(
             "With --generate, render the scene once per named shape — youtube (1920x1080), "
@@ -325,6 +334,14 @@ namespace
 // in front of a message that was actually useful.
 static int run(argparse::ArgumentParser &parser, int argc, char *argv[])
 {
+    // --loudness is a property of a written file, so it is refused where no
+    // file is written — first, before --lint or the editor runs the scene and
+    // takes it for a flag that did something.
+    if (parser.is_used("--loudness") && !parser.is_used("--generate")) {
+        std::cerr << "video-code: --loudness sets the level of the file it writes, so it needs --generate.\n";
+        return EXIT_FAILURE;
+    }
+
     // The scene as the editor's timeline reads it. `videocode/serialize.py`'s own
     // __main__ prints the baked stack instead — one entry per input per frame,
     // seventeen thousand lines for a scene of two shapes — which nothing can

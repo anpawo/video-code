@@ -334,8 +334,11 @@ int VC::Compiler::generateVideo()
         return EXIT_FAILURE;
     }
 
-    if (VC::ImageIO::hasImageExtension(config.outputFile))
+    if (VC::ImageIO::hasImageExtension(config.outputFile)) {
+        if (config.loudness)
+            std::cout << "Loudness: not normalised — an image carries no sound.\n";
         return generateImage(renderer, *first, *last);
+    }
 
     if (*first >= *last) {
         std::cerr << std::format("video-code: nothing to render between {} and {} — the scene is {:.2f} s long.\n", config.renderFrom, config.renderTo.empty() ? "the end" : config.renderTo, (double)sceneFrames / Config::SCENE_FRAMERATE);
@@ -350,9 +353,42 @@ int VC::Compiler::generateVideo()
     const VideoProfile profile = videoProfileFor(config.outputFile, config.hwEncode, config.framerate);
     renderer.setTransparentBackground(profile.transparentClear);
 
+    const auto window = ranged ? std::optional{std::pair{(double)*first / Config::SCENE_FRAMERATE, (double)*last / Config::SCENE_FRAMERATE}} : std::nullopt;
+
+    // --loudness, pass 1: the mix is measured before the first frame, over the
+    // stretch this file will hold. Each file of a --for or --data run comes
+    // through here with its own scene run, so each one is measured on its own.
+    // Where nothing can be normalised the render goes on as it would have, and
+    // says so in one line: a flag that changed nothing must not look obeyed.
+    VC::Audio::Loudness loudness;
+    const auto          loudnessFile = std::filesystem::temp_directory_path() / std::format("video-code-{}.loudnorm.json", (void*)this);
+    if (config.loudness) {
+        if (!profile.allowAudio)
+            std::cout << "Loudness: not normalised — a GIF carries no sound.\n";
+        else {
+            loudness = VC::Audio::measureLoudness(_core._inputs, window, sceneFrames, *config.loudness);
+            switch (loudness.state) {
+                case VC::Audio::Loudness::State::NoSound:
+                    std::cout << "Loudness: not normalised — the scene has no sound.\n";
+                    break;
+                case VC::Audio::Loudness::State::Silent:
+                    std::cout << std::format("Loudness: not normalised — the mix measures {} LUFS, which loudnorm takes for silence (-70 or lower).\n", loudness.inputI);
+                    break;
+                case VC::Audio::Loudness::State::Failed:
+                    std::cerr << std::format("video-code: --loudness could not measure the mix. ffmpeg said:\n{}\n", loudness.note);
+                    return EXIT_FAILURE;
+                case VC::Audio::Loudness::State::Ready:
+                    std::filesystem::remove(loudnessFile);
+                    loudness.statsFile = loudnessFile.string();
+                    break;
+            }
+        }
+    }
+    const bool normalised = loudness.state == VC::Audio::Loudness::State::Ready;
+
     // GIF can't carry audio, so skip the audio graph entirely for it.
     VC::Audio::AudioArgs audio = profile.allowAudio
-                                     ? VC::Audio::buildAudioArgs(_core._inputs, profile.audioCodec, ranged ? std::optional{std::pair{(double)*first / Config::SCENE_FRAMERATE, (double)*last / Config::SCENE_FRAMERATE}} : std::nullopt, sceneFrames)
+                                     ? VC::Audio::buildAudioArgs(_core._inputs, profile.audioCodec, window, sceneFrames, normalised ? &loudness : nullptr)
                                      : VC::Audio::AudioArgs{"", " -an"};
 
     // -movflags +faststart is an mp4/mov-only flag; omit it for webm/gif.
@@ -542,6 +578,11 @@ int VC::Compiler::generateVideo()
     pclose(pipe);
     if (!chapters.empty())
         std::filesystem::remove(chapterFile);
+    // Pass 2's answer, read before the file goes: the type is the one ffmpeg
+    // applied, which a dynamic fallback would otherwise hide.
+    const std::string normalisation = normalised ? VC::Audio::appliedNormalisation(loudness) : "";
+    if (normalised)
+        std::filesystem::remove(loudnessFile);
     if (writeFailed)
         return 1;
 
@@ -554,6 +595,9 @@ int VC::Compiler::generateVideo()
     doneBar += std::format("  100%  {:.1f}s", totalElapsed);
     doneBar += "                    "; // clear leftover frame-count text
     std::cout << "\r" << doneBar << "\n";
+
+    if (normalised)
+        std::cout << std::format("Loudness: {:.1f} LUFS -> {:.1f} LUFS target ({})\n", std::strtod(loudness.inputI.c_str(), nullptr), loudness.target, normalisation.empty() ? "type not reported" : normalisation);
 
     printChapters(_core._timestamps, *first, *last, chapters.empty() ? ext : "");
     return 0;
