@@ -15,7 +15,7 @@ class Star(Polygon):
     (the notches between them), centred on its origin.
 
     The first vertex is the tip straight up at `(0, outer)`; the rest follow
-    clockwise, the winding the other polygons use. Changing `points`,
+    clockwise, the winding the other polygons use. Changing `starPoints`,
     `outer` or `inner` after creation rebuilds the geometry.
     """
 
