@@ -936,6 +936,14 @@ ABOVE it, and `outgoing` itself is never touched.
 Easing curves (`videocode/utils/bezier.py`):
 - CSS-style cubic-beziers (`CubicBezier`): `Easing.Linear`, `Easing.In`,
   `Easing.Out`, `Easing.InOut`
+- The easings.net families, each `In`/`Out`/`InOut`, as `CubicBezier`s with
+  easings.net's control points: `Easing.InSine`, `Easing.OutSine`,
+  `Easing.InOutSine`, `Easing.InQuad`, `Easing.OutQuad`, `Easing.InOutQuad`,
+  `Easing.InCubic`, `Easing.OutCubic`, `Easing.InOutCubic`, `Easing.InQuart`,
+  `Easing.OutQuart`, `Easing.InOutQuart`, `Easing.InExpo`, `Easing.OutExpo`,
+  `Easing.InOutExpo`, `Easing.InCirc`, `Easing.OutCirc`, `Easing.InOutCirc`.
+  A cubic-bezier approximates the formula (within 0.01 at t=0.5): Sine, Expo
+  and Circ have no exact cubic form.
 - Manim-inspired rate functions (`Func`, ported from manim's
   `rate_functions`): `Easing.Smooth`, `Easing.RushInto`, `Easing.RushFrom`,
   `Easing.SlowInto`, `Easing.DoubleSmooth`, `Easing.ExponentialDecay` (0→1),
