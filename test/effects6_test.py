@@ -60,6 +60,13 @@ ops = [e["args"]["opacity"] for _, e in sorted(framesWith(t.meta.index, "Opacity
 check("starts at opacity 0", ops[0] == 0)
 check("ends at full opacity", ops[-1] == 255)
 check("cursor ends on the destination", t.meta.position.y == 2.0 and t.meta.position.x == 1.0)
+check("the fade runs on the same frames as the rise", framesWith(t.meta.index, "Opacity").keys() == pos.keys())
+
+d = Rectangle(width=1, height=1).position(1.0, 2.0)
+d.apply(riseIn())
+e = Rectangle(width=1, height=1).position(1.0, 2.0)
+e.apply(riseIn(distance=0.5, start=0, duration=0.6))
+check("the defaults are distance=0.5, start=0, duration=0.6", framesWith(d.meta.index, "Position") == framesWith(e.meta.index, "Position"))
 
 # A move in x over the same frames must survive, whichever was written first.
 for order in ("moveTo first", "riseIn first"):
