@@ -29,6 +29,41 @@ def _rows(data: dict[str, number] | list[tuple[str, number]]) -> list[tuple[str,
     return list(data.items()) if isinstance(data, dict) else list(data)
 
 
+def _readCSV(path: str, *, label: str | int, value: str | int) -> list[tuple[str, number]]:
+    """
+    The rows of a chart, read from a file — the reading every chart's `fromCSV` shares.
+
+    `label` and `value` are column names when the file has a header row and
+    column numbers when it does not. A bad cell is refused at its line.
+    """
+    with open(path, newline="") as file:
+        rows = list(csv.reader(file))
+    if not rows:
+        raise ValueError(f"{path} has no rows")
+
+    named = isinstance(label, str) or isinstance(value, str)
+    header = rows[0] if named else []
+    body = rows[1:] if named else rows
+
+    def column(which: str | int) -> int:
+        if isinstance(which, int):
+            return which
+        if which not in header:
+            raise ValueError(f"{path} has no column called {which!r} — it has {', '.join(header)}")
+        return header.index(which)
+
+    at, of = column(label), column(value)
+    data: list[tuple[str, number]] = []
+    for line, row in enumerate(body, start=2 if named else 1):
+        if len(row) <= max(at, of):
+            raise ValueError(f"{path}:{line} has {len(row)} column(s), not enough for this chart")
+        try:
+            data.append((row[at], float(row[of])))
+        except ValueError:
+            raise ValueError(f"{path}:{line} says {row[of]!r} where a number was expected") from None
+    return data
+
+
 class BarChart(Group):
     """
     One bar per row of data, with its label under it and its value on it::
@@ -127,33 +162,7 @@ class BarChart(Group):
         refused by name rather than skipped: a chart missing a bar nobody
         mentioned is the kind of quiet wrong this library exists to avoid.
         """
-        with open(path, newline="") as file:
-            rows = list(csv.reader(file))
-        if not rows:
-            raise ValueError(f"{path} has no rows")
-
-        named = isinstance(label, str) or isinstance(value, str)
-        header = rows[0] if named else []
-        body = rows[1:] if named else rows
-
-        def column(which: str | int) -> int:
-            if isinstance(which, int):
-                return which
-            if which not in header:
-                raise ValueError(f"{path} has no column called {which!r} — it has {', '.join(header)}")
-            return header.index(which)
-
-        at, of = column(label), column(value)
-        data: list[tuple[str, number]] = []
-        for line, row in enumerate(body, start=2 if named else 1):
-            if len(row) <= max(at, of):
-                raise ValueError(f"{path}:{line} has {len(row)} column(s), not enough for this chart")
-            try:
-                data.append((row[at], float(row[of])))
-            except ValueError:
-                raise ValueError(f"{path}:{line} says {row[of]!r} where a number was expected") from None
-
-        return cls(data, **options)
+        return cls(_readCSV(path, label=label, value=value), **options)
 
     def grow(self, *, duration: sec = 0.8, every: sec = 0.06, easing: easing = Easing.InOut) -> "BarChart":
         """

@@ -199,6 +199,30 @@ class Easing:
     Out = CubicBezier(0.0, 0.0, 0.58, 1.0)       # fast start, slow end
     InOut = CubicBezier(0.42, 0.0, 0.58, 1.0)    # slow start & end, fast middle
 
+    # The easings.net families, with the cubic-bezier control points it
+    # publishes. A cubic-bezier only APPROXIMATES these curves — Sine, Expo
+    # and Circ have no cubic form, and even Quart is a fit: at t=0.5 each is
+    # within 0.01 of its formula (InExpo gives 0.028 against 2^-5 = 0.031).
+    # Close enough to feel the same, and it keeps them draggable as curves.
+    InSine = CubicBezier(0.12, 0.0, 0.39, 0.0)       # gentlest ease-in
+    OutSine = CubicBezier(0.61, 1.0, 0.88, 1.0)      # gentlest ease-out
+    InOutSine = CubicBezier(0.37, 0.0, 0.63, 1.0)    # gentlest ease-in-out
+    InQuad = CubicBezier(0.11, 0.0, 0.5, 0.0)        # t^2 ease-in
+    OutQuad = CubicBezier(0.5, 1.0, 0.89, 1.0)       # t^2 ease-out
+    InOutQuad = CubicBezier(0.45, 0.0, 0.55, 1.0)    # t^2 ease-in-out
+    InCubic = CubicBezier(0.32, 0.0, 0.67, 0.0)      # t^3 ease-in
+    OutCubic = CubicBezier(0.33, 1.0, 0.68, 1.0)     # t^3 ease-out
+    InOutCubic = CubicBezier(0.65, 0.0, 0.35, 1.0)   # t^3 ease-in-out
+    InQuart = CubicBezier(0.5, 0.0, 0.75, 0.0)       # t^4 ease-in
+    OutQuart = CubicBezier(0.25, 1.0, 0.5, 1.0)      # t^4 ease-out
+    InOutQuart = CubicBezier(0.76, 0.0, 0.24, 1.0)   # t^4 ease-in-out
+    InExpo = CubicBezier(0.7, 0.0, 0.84, 0.0)        # 2^(10t-10) ease-in — near-still, then a rush
+    OutExpo = CubicBezier(0.16, 1.0, 0.3, 1.0)       # 1-2^(-10t) ease-out — a rush, then near-still
+    InOutExpo = CubicBezier(0.87, 0.0, 0.13, 1.0)    # exponential ease-in-out — sharpest middle
+    InCirc = CubicBezier(0.55, 0.0, 1.0, 0.45)       # quarter-circle ease-in — steepest at the end
+    OutCirc = CubicBezier(0.0, 0.55, 0.45, 1.0)      # quarter-circle ease-out — steepest at the start
+    InOutCirc = CubicBezier(0.85, 0.0, 0.15, 1.0)    # two quarter-circles
+
     # Manim-inspired rate functions. ThereAndBack, ThereAndBackWithPause and
     # Wiggle end back at t=0 (not t=1) — in range(0, 100, ...) they animate
     # out and back to the start value.

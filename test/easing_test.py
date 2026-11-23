@@ -10,6 +10,7 @@ exercising the generalized `easing` type used by `ease`/`moveTo`/`scaleTo`/
 Run directly: `python3 test/easing_test.py`
 """
 
+import math
 import sys
 
 sys.path.insert(0, ".")
@@ -74,6 +75,43 @@ check("Position frames pushed", len(posFrames) > 1)
 lastX = Context.stack[r2.meta.index][posFrames[-1]]["Position"]["args"]["x"]
 check("final x back near start (0)", approx(lastX, 0, tol=1e-2))
 
+# ── the easings.net families ─────────────────────────────────────────────────
+# Each is a CubicBezier with easings.net's control points. Two references at
+# t=0.5: the curve itself, solved by bisection (what CubicBezier must compute,
+# to 1e-6), and easings.net's FORMULA, which the curve only approximates —
+# Sine, Expo and Circ have no cubic form — so that one gets 0.01.
+
+EASINGS_NET = {
+    "InSine": 1 - math.cos(math.pi / 4), "OutSine": math.sin(math.pi / 4), "InOutSine": 0.5,
+    "InQuad": 0.25, "OutQuad": 0.75, "InOutQuad": 0.5,
+    "InCubic": 0.125, "OutCubic": 0.875, "InOutCubic": 0.5,
+    "InQuart": 0.0625, "OutQuart": 0.9375, "InOutQuart": 0.5,
+    "InExpo": 2**-5, "OutExpo": 1 - 2**-5, "InOutExpo": 0.5,
+    "InCirc": 1 - math.sqrt(0.75), "OutCirc": math.sqrt(0.75), "InOutCirc": 0.5,
+}
+
+
+def bisected(curve: CubicBezier, x: float) -> float:
+    """y of `curve` at `x`, found by bisection on t — independent of CubicBezier's Newton solve."""
+    def at(t: float, p1: float, p2: float) -> float:
+        return 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if at(mid, curve.x1, curve.x2) < x else (lo, mid)
+    return at((lo + hi) / 2, curve.y1, curve.y2)
+
+
+section("easings.net families: endpoints and midpoint")
+for name, formula in EASINGS_NET.items():
+    f = getattr(Easing, name)
+    check(f"{name} is a CubicBezier", isinstance(f, CubicBezier))
+    check(f"{name}(0) == 0", approx(f(0), 0, tol=1e-9))
+    check(f"{name}(1) == 1", approx(f(1), 1, tol=1e-9))
+    check(f"{name}(0.5) is the curve's own value", approx(f(0.5), bisected(f, 0.5), tol=1e-6))
+    check(f"{name}(0.5) ~= easings.net formula", approx(f(0.5), formula, tol=0.01))
+check("In and Out mirror each other", approx(Easing.InExpo(0.3) + Easing.OutExpo(0.7), 1, tol=1e-6))
+
 # ── the presets, as the four numbers behind them ─────────────────────────────
 # What the editor's curve reads to open on `Easing.Out` and to drag away from
 # it. The spelling matters as much as the numbers: it is written back into the
@@ -83,7 +121,7 @@ table = curves()
 check("keyed the way a scene writes them", "Easing.Out" in table)
 check("Easing.Out is its own control points", table["Easing.Out"] == (0.0, 0.0, 0.58, 1.0))
 check("Easing.Linear is the straight line", table["Easing.Linear"] == (0.0, 0.0, 1.0, 1.0))
-check("every CubicBezier preset is there", set(table) == {"Easing.Linear", "Easing.In", "Easing.Out", "Easing.InOut"})
+check("every CubicBezier preset is there", set(table) == {f"Easing.{n}" for n in ("Linear", "In", "Out", "InOut", *EASINGS_NET)})
 check("a Func easing has no handles to show", "Easing.Wiggle" not in table)
 for name, points in table.items():
     curve = getattr(Easing, name.split(".")[1])
