@@ -16,6 +16,7 @@ from videocode.template.input.Shadow import *
 from videocode.template.input.SurroundingRectangle import *
 from videocode.template.input.Underline import *
 from videocode.template.input.Cross import *
+from videocode.template.input.Star import *
 from videocode.template.input.FocusOn import *
 from videocode.template.input.DashedLine import *
 from videocode.template.input.YStack import *
