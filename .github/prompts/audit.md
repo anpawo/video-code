@@ -31,8 +31,13 @@ python3 test/repetition_check.py --list
   DIFFERENT code never show up as a clone. Start from the changed ones, look in
   the index for another that could be doing the same job, then read both
   bodies. Names lie; bodies do not.
-- A public name nothing uses (`--list` prints them; confirm with `grep -rn`
-  over the whole repository, QML and C++ included) can be deleted.
+- Before proposing deletion of a public name nothing uses (`--list` prints
+  them; confirm with `grep -rn` over the whole repository, QML and C++ included),
+  read `docs/FEATURES.md`. Never propose deleting a public API documented there
+  solely because it has no callers in this repository: external scenes may use
+  it. Duplicate-code findings remain eligible when public names, signatures and
+  behaviour are preserved. Removing a documented public API requires Marius's
+  explicit decision outside this audit.
 
 **Stay silent on** declared twins (`test/twins.json` says which files and why)
 and on anything already raised: list this repository's pull requests whose
