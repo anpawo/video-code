@@ -57,5 +57,11 @@ check("shrinks to 0 at the end", abs(pxs[-1]) < 1e-6 and abs(poScales[max(poScal
 poHides = framesWith(po.meta.index, "Hide")
 check("hide lands after the last scale frame", len(poHides) == 1 and min(poHides) > max(poScales))
 
+pd = Rectangle(width=1, height=1)
+pd.apply(popOut())
+pe = Rectangle(width=1, height=1)
+pe.apply(popOut(start=0, duration=0.5))
+check("the defaults are start=0, duration=0.5", framesWith(pd.meta.index, "Hide").keys() == framesWith(pe.meta.index, "Hide").keys())
+
 # ---------------------------------------------------------------------------
 summary()
