@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "agent/LineDiff.hpp"
+#include "compiler/LoudnormMode.hpp"
 #include "shader/IFragmentShader.hpp"
 
 static int failures = 0;
@@ -95,6 +96,46 @@ int main()
         // A move is not detected as a move, and that is deliberate — it costs a
         // second pass and the pane has no way to draw one.
         check("a moved line is a delete plus an add", render({"a", "b"}, {"b", "a"}) == "-a; b;+a;");
+    }
+
+    // The inputs are pass-1 reports of ffmpeg n9.0.2's loudnorm (2026-11-23):
+    //   steady.wav   440 Hz sine, lavfi default amplitude, 6 s:
+    //                input_i -21.75, input_tp -21.07, input_lra 0.00, input_thresh -31.75, out_time 6 s
+    //   noise.wav    pink noise, amplitude 0.05, seed 1, 6 s:
+    //                input_i -40.74, input_tp -30.94, input_lra 0.00, input_thresh -50.74, out_time 6 s
+    //   noise2.wav   the first 2 s of noise.wav:
+    //                input_i -40.74, input_tp -31.20, input_lra 0.00, input_thresh -50.74, out_time 2 s
+    // The expected types are what ffmpeg n9.0.2's own pass 2 reported in its
+    // stats file for those values: steady at -23 dynamic with measured_LRA
+    // 0.00 and linear with 0.01; noise at -5 dynamic and at -20 linear (the
+    // render of d256a5a); noise at -20 with measured_LRA 12 dynamic; noise2
+    // at -5 linear. A length not reported has no ffmpeg run behind it: it is
+    // the choice to say dynamic rather than guess short.
+    section("loudnormLinear — the mode loudnorm picks, from the values pass 2 gets");
+    {
+        using VC::Audio::loudnormLinear;
+        using VC::Audio::LoudnormPass2;
+        const LoudnormPass2 steady{.targetI = -23, .targetTP = -1, .targetLRA = 11, .measuredI = -21.75, .measuredTP = -21.07, .measuredLRA = 0.01, .measuredThresh = -31.75, .seconds = 6};
+        check("a steady tone, its LRA raised to 0.01, cut to -23: linear", loudnormLinear(steady));
+        LoudnormPass2 unraised = steady;
+        unraised.measuredLRA = 0.00;
+        check("the same tone with measured_LRA 0.00: dynamic", !loudnormLinear(unraised));
+
+        const LoudnormPass2 noise{.targetI = -5, .targetTP = -1, .targetLRA = 11, .measuredI = -40.74, .measuredTP = -30.94, .measuredLRA = 0.01, .measuredThresh = -50.74, .seconds = 6};
+        check("pink noise to -5: the peak would reach +4.8 dBTP, so dynamic", !loudnormLinear(noise));
+        LoudnormPass2 quieter = noise;
+        quieter.targetI = -20;
+        check("the same noise to -20: the peak stays at -10.2 dBTP, so linear", loudnormLinear(quieter));
+
+        const LoudnormPass2 shortNoise{.targetI = -5, .targetTP = -1, .targetLRA = 11, .measuredI = -40.74, .measuredTP = -31.20, .measuredLRA = 0.01, .measuredThresh = -50.74, .seconds = 2};
+        check("2 s of that noise to -5: shorter than loudnorm's 3 s first frame, so linear", loudnormLinear(shortNoise));
+        LoudnormPass2 unknown = noise;
+        unknown.seconds = -1;
+        check("a length not reported is not taken for a short one", !loudnormLinear(unknown));
+
+        LoudnormPass2 wide = quieter;
+        wide.measuredLRA = 12;
+        check("a measured range above the target range: dynamic", !loudnormLinear(wide));
     }
 
     std::printf("\n%s\n", failures == 0 ? "\033[32mAll checks passed.\033[0m" : "\033[31mFAILED\033[0m");
