@@ -246,7 +246,10 @@ jobs:
   # commit its author never compiled.
   macos:
     name: macOS build, C++ tests and QML load
-    runs-on: macos-14
+    # macos-14 is retired: on 23 Nov. 2026 a job asking for it was refused
+    # before it started ("The configuration 'macos-14-arm64-us-default' is not
+    # supported", #447).
+    runs-on: macos-15
     permissions:
       contents: read
     steps:
@@ -306,7 +309,12 @@ jobs:
   # ── lane D: the compiler and everything that needs a binary. ──
   build:
     name: Linux build, full suite, showcase render, mutants
-    runs-on: ubuntu-latest
+    # The runner the release archives are built on (release.yaml), not
+    # ubuntu-latest: on 23 Nov. 2026 that gave Ubuntu 26.04 (image 20261111.635), whose OpenCV
+    # 4.10 was built with a newer GCC than the g++-13 below, and the link died on
+    # `__cxa_call_terminate@CXXABI_1.3.15` (#447). The binary CI tests should be
+    # built against the libraries the shipped one is.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
