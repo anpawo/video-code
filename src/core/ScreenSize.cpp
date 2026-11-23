@@ -11,6 +11,7 @@
 #include <pybind11/stl.h>
 
 #include <argparse/argparse.hpp>
+#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <iostream>
@@ -54,6 +55,24 @@ namespace
     {
         const std::filesystem::path out(path);
         return (out.parent_path() / std::format("{}-{}{}", out.stem().string(), shape, out.extension().string())).string();
+    }
+
+    // --loudness, read as text and checked here, before the scene runs: a
+    // number argparse scanned itself would be refused in argparse's words,
+    // which name neither the range nor what the flag is for. -70..-5 is the
+    // range ffmpeg 9.0.2's loudnorm takes for I (`ffmpeg -h filter=loudnorm`).
+    std::optional<double> loudnessFor(const argparse::ArgumentParser &parser)
+    {
+        const auto asked = parser.present("--loudness");
+        if (!asked)
+            return std::nullopt;
+        char        *end = nullptr;
+        const double target = std::strtod(asked->c_str(), &end);
+        if (end == asked->c_str() || *end != '\0' || !(target >= -70.0 && target <= -5.0)) {
+            std::cerr << std::format("video-code: --loudness takes a target from -70 to -5 LUFS (-14 is Spotify's), and \"{}\" is not one.\n", *asked);
+            std::exit(EXIT_FAILURE);
+        }
+        return target;
     }
 }
 
@@ -118,6 +137,8 @@ Config VC::makeConfig(const argparse::ArgumentParser &parser)
 
         .sheetTiles = parser.present<int>("--sheet").value_or(1),
         .sheetAt = parser.present("--at").value_or(""),
+
+        .loudness = loudnessFor(parser),
     };
 }
 

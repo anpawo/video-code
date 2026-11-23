@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 
 struct Config
@@ -52,6 +53,11 @@ struct Config
     ///< spends tiles on stillness and misses the ones that were named. Given,
     ///< it decides both which frames are shown and how many.
     std::string sheetAt;
+
+    ///< --loudness: the integrated loudness the written file is brought to,
+    ///< in LUFS, already checked to be in loudnorm's -70..-5. Empty without
+    ///< the flag, and then the audio is mixed exactly as it always was.
+    std::optional<double> loudness;
 
     ///< --for: which named shape this render is and its place in the run
     ///< ("tiktok, 2 of 3"), for the Generating line. Empty for a lone render.
