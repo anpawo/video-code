@@ -142,16 +142,19 @@ def statements(source: str, path: str, numbers: set[int]) -> dict[int, int]:
 
     The first line, because a statement spread over three lines reports itself
     as run on its first one only. Comments, blank lines and docstrings are not
-    code, and neither is a line marked EXEMPT.
+    code, and neither is a line marked EXEMPT nor an `if TYPE_CHECKING:` body,
+    which only the type checker reads.
     """
     tree = ast.parse(source)
     nodes = [n for n in ast.walk(tree) if isinstance(n, ast.stmt)]
+    typeOnly = {line for n in nodes if isinstance(n, ast.If) and ast.unparse(n.test) in ("TYPE_CHECKING", "typing.TYPE_CHECKING")
+                for s in n.body for line in range(s.lineno, (s.end_lineno or s.lineno) + 1)}
     code = runnable(compile(source, path, "exec"))
     text = source.splitlines()
     out: dict[int, int] = {}
     for n in sorted(numbers):
         line = text[n - 1].strip() if n <= len(text) else ""
-        if not line or line.startswith("#"):
+        if not line or line.startswith("#") or n in typeOnly:
             continue
         owners = [s.lineno for s in nodes if s.lineno <= n <= (s.end_lineno or s.lineno)]
         if not owners:
