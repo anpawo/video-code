@@ -41,7 +41,9 @@ It is ffmpeg's `loudnorm` in two passes:
 2. The render adds one stage after the mix:
    `loudnorm=I=<target>:TP=-1:LRA=<lra>:measured_I=…:measured_LRA=…:measured_TP=…:measured_thresh=…:offset=…:linear=true`,
    then `aresample=48000`, because `loudnorm` outputs 192 kHz. `<lra>` is the
-   larger of 11 and the measured range, at most 50.
+   larger of 11 and the measured range, at most 50. `measured_LRA` is at least
+   0.01: ffmpeg 9.0.2 uses dynamic mode for `measured_LRA=0.00`, and a short clip
+   often measures 0.00 (a steady tone, and 8 s of real music, did).
 
 One pass alone is not linear: with nothing measured, `loudnorm` falls back to
 dynamic mode and rides the gain through the film. After the render, one line says
@@ -51,9 +53,10 @@ what happened, with the type that the render's `loudnorm` reports:
 Loudness: -41.5 LUFS -> -14.0 LUFS target (linear)
 ```
 
-`dynamic` is printed when ffmpeg used it. ffmpeg 9.0.2 used it for a mix whose
-measured range is exactly 0.00 LU, a steady tone for example, and for a gain that
-would put the peak above −1 dBTP (both measured).
+`dynamic` is printed when ffmpeg used it. ffmpeg 9.0.2 used it for a gain that
+would put the peak above −1 dBTP, and then the target can be missed: steady pink
+noise at −40.7 LUFS, asked for −5, came out at −9.7 LUFS by `ebur128`. The same
+noise asked for −20 was linear, at −20.5 (both measured).
 
 The target is −70 to −5, the range `loudnorm` accepts. Another value, or
 `--loudness` without `--generate`, is refused before the scene runs. With `--for`

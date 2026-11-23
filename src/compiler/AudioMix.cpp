@@ -331,20 +331,28 @@ namespace VC::Audio
     }
 
     // linear=true is a request, not a promise. ffmpeg 9.0.2 gave dynamic for a
-    // gain that would lift the peak above -1 dBTP, and for a measured LRA of
-    // exactly 0.00 on steady noise, where 0.01 gave linear (both measured).
-    // LRA is the larger of 11 and the measured range, capped at loudnorm's 50,
-    // as SPEC-loudness.md asks: a target range below the measured one is the
+    // gain that would lift the peak above -1 dBTP (measured). LRA is the
+    // larger of 11 and the measured range, capped at loudnorm's 50, as
+    // SPEC-loudness.md asks: a target range below the measured one is the
     // spec's named cause of the fallback. The report says which mode happened.
+    //
+    // measured_LRA is passed as at least 0.01. loudnorm takes 0.00 (its
+    // default value) as a reason for dynamic mode, and a short clip can
+    // measure 0.00: a steady tone does, and test/tour_music.wav (8 s of real
+    // music) did. On that file pass 2 with measured_I=-16.09:measured_TP=-6.16
+    // gave dynamic with 0.00 and linear with 0.01, at -14 and at -23 alike,
+    // every file at the target by ebur128 (the controller, 2026-11-23). The
+    // measurement is changed by 0.01 LU, which is no range either.
     std::string loudnormStage(const Loudness& measured)
     {
-        const double range = std::min(50.0, std::max(11.0, std::strtod(measured.inputLRA.c_str(), nullptr)));
+        const double lra = std::strtod(measured.inputLRA.c_str(), nullptr);
+        const double range = std::min(50.0, std::max(11.0, lra));
         return std::format(
             "loudnorm=I={}:TP=-1:LRA={}:measured_I={}:measured_LRA={}:measured_TP={}:measured_thresh={}:offset={}:linear=true:print_format=json{},aresample=48000",
             measured.target,
             range,
             measured.inputI,
-            measured.inputLRA,
+            lra < 0.01 ? std::string("0.01") : measured.inputLRA,
             measured.inputTP,
             measured.inputThresh,
             measured.targetOffset,

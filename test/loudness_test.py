@@ -82,10 +82,10 @@ def loudness(path: str) -> float | None:
     return float(found[-1]) if found else None
 
 
-def loudnormInput(path: str) -> float | None:
-    """A file's level as loudnorm's own first pass reads it — its `input_i`."""
+def loudnormInput(path: str, key: str = "input_i") -> float | None:
+    """What loudnorm's own first pass reads in a file — its `input_i` by default."""
     said = run(["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-af", "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"])
-    found = re.findall(r'"input_i" : "(-?[\d.]+|-inf)"', said.stderr)
+    found = re.findall(rf'"{key}" : "(-?[\d.]+|-inf)"', said.stderr)
     return float(found[-1]) if found else None
 
 
@@ -159,10 +159,9 @@ if needsRenderer("--loudness is a flag of the renderer") and needsTool("ffmpeg",
     ffmpeg = Ffmpeg(folder)
 
     # A tone at two levels, 3 s quiet then 3 s 6 dB louder, made here rather
-    # than committed. Two levels give it a loudness RANGE: a steady tone
-    # measures LRA 0.00, and ffmpeg 9.0.2's loudnorm then reports "dynamic"
-    # however the second pass is set (measured on 2026-11-23: the same noise
-    # with measured_LRA=0.00 gave dynamic, with 0.01 gave linear).
+    # than committed. Two levels give it a loudness RANGE above 0, so the
+    # measured range passes through as measured; the steady tone further
+    # down measures 0.00, the case the render raises to 0.01.
     # Not 12 dB: the quiet half then sits 0.7 dB above the -10 LU relative
     # gate, and loudnorm (-40.4 LUFS) and ebur128 (-42.9) disagreed on it by
     # 2.5 LU — a test of the two meters' gating, not of the render.
@@ -305,6 +304,30 @@ if needsRenderer("--loudness is a flag of the renderer") and needsTool("ffmpeg",
         written = os.path.join(folder, f"shape-{shape}.mp4")
         measured = loudness(written) if os.path.exists(written) else None
         check(f"{shape} is written at -16 ±1 LU ({measured} LUFS)", measured is not None and abs(measured + 16) <= 1.0)
+
+    # A steady tone measures LRA 0.00, and so does a few seconds of real music
+    # (the controller measured test/tour_music.wav, 8 s, at 0.00). loudnorm
+    # takes measured_LRA=0.00 as "dynamic" even for a pure gain cut.
+    section("--loudness on a clip with no loudness range — still linear")
+    steady = os.path.join(folder, "steady.wav")
+    run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+        "-i", "sine=frequency=440:duration=6:sample_rate=44100", "-ac", "2", steady,
+    ])
+    flat = write("steady.py", f"from videocode import *\nSound({steady!r})\nwait(6)\n")
+    output = os.path.join(folder, "steady.mp4")
+    said = render(flat, output, "--loudness", "-23")
+    calls = ffmpeg.calls()
+    check("renders", said.returncode == 0)
+    range_ = loudnormInput(steady, "input_lra")
+    check(f"loudnorm reads no range in the tone (input_lra {range_})", range_ == 0.0)
+    check(f"the tone is above the target, so this is a gain cut ({loudnormInput(steady)} LUFS)", (loudnormInput(steady) or -99.0) > -23.0)
+    check("two ffmpeg runs: the measurement, then the render", len(calls) == 2)
+    check("the render passes measured_LRA=0.01, not 0.00", len(calls) == 2 and ":measured_LRA=0.01:" in option(calls[1], "-filter_complex"))
+    line = re.search(r"^Loudness: (-?[\d.]+) LUFS -> -23\.0 LUFS target \((\w+)\)$", said.stdout, re.M)
+    check(f"the report says linear ({line.group(0) if line else said.stdout[-200:]!r})", line is not None and line.group(2) == "linear")
+    measured = loudness(output)
+    check(f"ebur128 measures the file at -23 ±1 LU ({measured} LUFS)", measured is not None and abs(measured + 23) <= 1.0)
 
     # ── nothing to normalise: rendered as before, and said ──────────────────
     section("Nothing to normalise — rendered as before, with the reason")
