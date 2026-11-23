@@ -32,6 +32,9 @@ radii = [math.hypot(x, y) for x, y in s.vertices]
 check("even vertices on the outer radius", all(approx(r, 1) for r in radii[0::2]))
 check("odd vertices on the inner radius", all(approx(r, 0.4) for r in radii[1::2]))
 check("second vertex is clockwise of the first (x > 0)", s.vertices[1][0] > 0)
+expected = [(r * math.cos(math.pi / 2 - i * math.pi / 5), r * math.sin(math.pi / 2 - i * math.pi / 5)) for i, r in enumerate([1, 0.4] * 5)]
+check("vertex i sits at 90° minus i tenths of a turn", all(approx(x, ex) and approx(y, ey) for (x, y), (ex, ey) in zip(s.vertices, expected)))
+check("no stroke and sharp corners by default", s.strokeWidth == 0 and s.cornerRadius == 0)
 
 # ── custom points/radii ──────────────────────────────────────────────────────
 section("Star(points=7, outer=2, inner=0.5)")
