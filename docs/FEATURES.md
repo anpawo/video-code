@@ -917,6 +917,7 @@ Standalone generator functions that build shader sequences. Call via `input.appl
 | `riseIn(distance=0.5, duration=0.6)` | `riseIn.py` | Title entrance: fades in while rising `distance` into place; claims y only, so a concurrent x move still applies |
 | `wipeIn(direction, ...)` / `wipeOut(...)` | `wipe.py` | Directional reveal/hide via animated crop |
 | `pulse(scale, times, ...)` | `pulse.py` | There-and-back scale pulse (beat-sync's partner) |
+| `blink(times, start, duration)` | `blink.py` | Opacity snaps to 0 and back `times` times, ends at the original opacity — cursor, warning, "recording" dot |
 | `zoomPunch(...)` / `flash(...)` / `jelly(...)` / `swing(...)` / `tada(...)` / `stamp(...)` | | Emphasis effects (Animate.css-style) |
 | `kenBurns(...)` | `kenBurns.py` | Slow pan+zoom for stills |
 
